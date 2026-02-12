@@ -1,0 +1,13 @@
+{
+  "client/**/*.{ts,tsx,js,jsx}": [
+    "prettier --write",
+    "npm --prefix client run lint:fix --"
+  ],
+  "server/**/*.{ts,tsx,js,jsx}": [
+    "prettier --write",
+    "npm --prefix server run lint:fix --"
+  ],
+  "*.{json,md,mdx,css,scss}": ["prettier --write"],
+  "client/**/*.{json,md,mdx,css,scss}": ["prettier --write"],
+  "server/**/*.{json,md,mdx,css,scss}": ["prettier --write"]
+}
