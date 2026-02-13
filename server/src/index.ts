@@ -1,23 +1,38 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import dotenv from "dotenv";
+import "dotenv/config";
 import express from "express";
 
-dotenv.config();
+import authRoutes from "./routes/auth.routes.js";
+import connectDB from "./utils/connectDB.js";
 
 const app = express();
 const PORT = process.env.PORT ?? 8000;
 
-app.use(cors());
-app.use(express.json());
+app.use(
+  cors({
+    origin: "*",
+    credentials: true,
+  })
+);
+app.use(express.json({ limit: "16kb" }));
+app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(cookieParser());
+
+app.use("/api/v1/auth", authRoutes);
 
 app.get("/", (_req, res) => {
   res.json({ message: "Server is running" });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+connectDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error("Error connecting to MongoDB:", error);
+  });
 
 export default app;
