@@ -44,6 +44,9 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  --color-bc-primary: #1ecb6d;
+  --color-bc-bg-light: #f7f9f8;
+  --color-bc-bg-dark: #0d1110;
 }
 
 :root {
@@ -118,11 +121,27 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    @apply border-border outline-ring/50;
   }
 
   body {
     @apply bg-background text-foreground;
-    @apply bg-background text-foreground;
   }
+}
+
+.map-texture {
+  background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBWhJiDljcMCHFpYp32vLE_pdbETFGaHJQ7KP9RJv2ZuJEhvntpCGaPPhZ4NfTxGsRxHqGQazvndOvXTRHQcQ9F363F5zh-l2YEQd8MgQfLLe0Mwatep571reqxPjX04EKSIE3XPACIkElGnnjSBP1P9lChfPytiTkJ0160kPHjSBEzYG80zWIKx9pwGugUkdymfbW2Y474XN8jCRyS0xsyZ1UfE9SBC5N5C-K75TfpZwUhkd2Pgw7sj8NQWFKg9Z9VyOLQkWcQW3GO");
+  opacity: 0.03;
+}
+
+.dark .map-texture {
+  opacity: 0.05;
+  filter: invert(1);
+}
+
+.hero-gradient {
+  background: radial-gradient(
+    circle at 70% 30%,
+    rgba(30, 203, 109, 0.08) 0%,
+    transparent 50%
+  );
 }

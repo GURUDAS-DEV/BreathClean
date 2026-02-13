@@ -1,17 +1,7 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Outfit } from "next/font/google";
+import { Outfit } from "next/font/google";
 
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -19,8 +9,35 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "BreatheClean - Start Your Healthy Journey",
-  description: "Join 50,000+ commuters prioritizing health with BreatheClean",
+  title: {
+    default: "BreatheClean — Breathe Easier on Every Journey",
+    template: "%s | BreatheClean",
+  },
+  description:
+    "Health-first route planning for urban commuters. Real-time air quality data to help you find the cleanest path on every journey.",
+  keywords: [
+    "air quality",
+    "route planner",
+    "AQI",
+    "healthy commute",
+    "pollution",
+    "BreatheClean",
+  ],
+  authors: [{ name: "BreatheClean" }],
+  openGraph: {
+    title: "BreatheClean — Breathe Easier on Every Journey",
+    description:
+      "Health-first route planning for urban commuters. Find the cleanest path with real-time AQI data.",
+    siteName: "BreatheClean",
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "BreatheClean — Breathe Easier on Every Journey",
+    description:
+      "Health-first route planning for urban commuters. Find the cleanest path with real-time AQI data.",
+  },
 };
 
 export default function RootLayout({
@@ -29,8 +46,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${outfit.variable} antialiased`}>{children}</body>
+    <html lang="en" className="scroll-smooth" suppressHydrationWarning>
+      <body className={`${outfit.variable} font-outfit antialiased`}>
+        {children}
+      </body>
     </html>
   );
 }

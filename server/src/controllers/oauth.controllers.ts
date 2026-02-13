@@ -12,10 +12,10 @@ const refreshSecret = process.env.REFRESH_TOKEN_SECRET!;
 export const googleLink = async (_req: Request, res: Response) => {
   try {
     const response = simpleGoogleLink(clientId, redirectUri);
-    res.redirect(response);
+    return res.json({ url: response });
   } catch (error) {
     console.error("Error in googleLink:", error);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -40,15 +40,25 @@ export const googleCallback = async (req: Request, res: Response) => {
     if (!response.user) {
       return res.status(401).json({ error: "Google authentication failed" });
     }
-    res.cookie("refreshToken", response.refreshToken, {
+    res.cookie("refreshToken", response.tokens.refreshToken, {
       httpOnly: true,
       secure: true,
-      sameSite: "strict",
+      sameSite: "lax",
       maxAge: 60 * 60 * 24 * 30 * 1000,
     });
-    return res.json({ response });
+    return res.redirect("http://localhost:3000/home");
   } catch (error) {
     console.log("Error in googleCallback:", error);
+    return res.status(500).json({ errorMsg: "Internal server error", error });
+  }
+};
+
+export const googleLogout = async (req: Request, res: Response) => {
+  try {
+    res.clearCookie("refreshToken");
+    return res.redirect("http://localhost:3000");
+  } catch (error) {
+    console.log("Error in googleLogout:", error);
     return res.status(500).json({ errorMsg: "Internal server error", error });
   }
 };

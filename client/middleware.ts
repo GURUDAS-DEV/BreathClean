@@ -9,7 +9,7 @@ export default function middleware(request: NextRequest): NextResponse {
 
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith("/Login")) {
+  if (pathname.startsWith("/login")) {
     if (isAuthenticated) {
       return NextResponse.redirect(new URL("/home", request.url));
     }
@@ -25,5 +25,5 @@ export default function middleware(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  matcher: ["/Login", "/home/:path*"],
+  matcher: ["/login", "/home/:path*"],
 };
