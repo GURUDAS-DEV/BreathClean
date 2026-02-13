@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - development
+  push:
+    branches:
+      - main
+      - development
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install client dependencies
+        run: npm --prefix client ci
+
+      - name: Install server dependencies
+        run: npm --prefix server ci
+
+      - name: Lint client
+        run: npm run lint:client
+
+      - name: Lint server
+        run: npm run lint:server
+
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run check
+
+  check-types:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install client dependencies
+        run: npm --prefix client ci
+
+      - name: Install server dependencies
+        run: npm --prefix server ci
+
+      - name: Check client types
+        run: npm run check-types:client
+
+      - name: Check server types
+        run: npm run check-types:server
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, format, check-types]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install client dependencies
+        run: npm --prefix client ci
+
+      - name: Install server dependencies
+        run: npm --prefix server ci
+
+      - name: Build client
+        run: npm run build:client
+
+      - name: Build server
+        run: npm run build:server
