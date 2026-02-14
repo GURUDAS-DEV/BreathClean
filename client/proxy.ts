@@ -15,7 +15,7 @@ export default function middleware(request: NextRequest): NextResponse {
     }
   }
 
-  if (pathname.startsWith("/home")) {
+  if (pathname.startsWith("/home") || pathname.startsWith("/profile")) {
     if (!isAuthenticated) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
@@ -25,5 +25,5 @@ export default function middleware(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  matcher: ["/login", "/home/:path*"],
+  matcher: ["/login", "/home/:path*", "/profile/:path*"],
 };

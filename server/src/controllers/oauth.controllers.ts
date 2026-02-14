@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { simpleGoogleCallback, simpleGoogleLink } from "simply-auth";
 
+import User from "../Schema/user.schema.js";
 import { userAdapter } from "../utils/userAdapter.js";
 
 const clientId = process.env.GOOGLE_CLIENT_ID!;
@@ -60,5 +61,18 @@ export const googleLogout = async (_req: Request, res: Response) => {
   } catch (error) {
     console.log("Error in googleLogout:", error);
     return res.status(500).json({ errorMsg: "Internal server error", error });
+  }
+};
+
+export const getUser = async (req: Request, res: Response) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    return res.json({ user });
+  } catch (error) {
+    console.log("Error in getUser:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
