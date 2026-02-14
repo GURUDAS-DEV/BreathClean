@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type TouchEvent as ReactTouchEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -71,8 +78,75 @@ export default function HomeMap({ className }: HomeMapProps) {
   const [sourceQuery, setSourceQuery] = useState("");
   const [destQuery, setDestQuery] = useState("");
 
-  // Sync queries with locations (removed useEffects to avoid lint errors/loops)
-  // We will manually sync state when setting locations.
+  // Mobile Bottom Sheet State
+  const [sheetExpanded, setSheetExpanded] = useState(true);
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  const touchStartY = useRef(0);
+  const touchCurrentY = useRef(0);
+  const isDragging = useRef(false);
+  const sheetContentRef = useRef<HTMLDivElement | null>(null);
+
+  const handleSheetTouchStart = (e: ReactTouchEvent) => {
+    // Only start drag from the handle area, not when scrolling content
+    const scrollableContent = sheetContentRef.current;
+    if (scrollableContent && scrollableContent.scrollTop > 0 && sheetExpanded) {
+      // If content is scrolled down and sheet is expanded, let normal scroll happen
+      return;
+    }
+    touchStartY.current = e.touches[0].clientY;
+    touchCurrentY.current = e.touches[0].clientY;
+    isDragging.current = true;
+  };
+
+  const handleSheetTouchMove = (e: ReactTouchEvent) => {
+    if (!isDragging.current) return;
+    touchCurrentY.current = e.touches[0].clientY;
+    const deltaY = touchCurrentY.current - touchStartY.current;
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+
+    // Only allow dragging down when expanded, or up when collapsed
+    if (sheetExpanded && deltaY > 0) {
+      // Dragging down to collapse
+      sheet.style.transition = "none";
+      sheet.style.transform = `translateY(${deltaY}px)`;
+    } else if (!sheetExpanded && deltaY < 0) {
+      // Dragging up to expand
+      sheet.style.transition = "none";
+      sheet.style.transform = `translateY(${Math.max(deltaY, -window.innerHeight * 0.6)}px)`;
+    }
+  };
+
+  const handleSheetTouchEnd = () => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    const deltaY = touchCurrentY.current - touchStartY.current;
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+
+    sheet.style.transition = "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)";
+    sheet.style.transform = "";
+
+    const threshold = 80;
+
+    if (sheetExpanded && deltaY > threshold) {
+      setSheetExpanded(false);
+    } else if (!sheetExpanded && deltaY < -threshold) {
+      setSheetExpanded(true);
+    }
+  };
+
+  // Map padding offset — push center point upward so marker shows above the bottom sheet
+  const getMobileMapPadding = useCallback(() => {
+    if (typeof window === "undefined")
+      return { top: 0, bottom: 300, left: 0, right: 0 };
+    return {
+      top: 0,
+      bottom: sheetExpanded ? Math.round(window.innerHeight * 0.45) : 80,
+      left: 0,
+      right: 0,
+    };
+  }, [sheetExpanded]);
 
   const mapStatusLabel = useMemo(() => {
     if (mapStatus === "no-token") return "Mapbox token missing";
@@ -170,11 +244,20 @@ export default function HomeMap({ className }: HomeMapProps) {
           updateMarker("dest", longitude, latitude);
         }
 
-        // Fly to updated location
+        // Fly to updated location with mobile offset
+        const isMobile = window.innerWidth < 1024;
         mapRef.current?.flyTo({
           center: [longitude, latitude],
           zoom: 14,
           essential: true,
+          padding: isMobile
+            ? {
+                top: 0,
+                bottom: Math.round(window.innerHeight * 0.45),
+                left: 0,
+                right: 0,
+              }
+            : undefined,
         });
 
         setIsGettingCurrentLocation(null);
@@ -274,10 +357,21 @@ export default function HomeMap({ className }: HomeMapProps) {
                 if (!isCancelled) setIsLocating(false);
               });
 
+              // Use padding to offset center upward on mobile so marker
+              // sits above the bottom sheet (roughly upper-third of screen)
+              const isMobile = window.innerWidth < 1024;
               map.flyTo({
                 center: [longitude, latitude],
                 zoom: 13,
                 essential: true,
+                padding: isMobile
+                  ? {
+                      top: 0,
+                      bottom: Math.round(window.innerHeight * 0.45),
+                      left: 0,
+                      right: 0,
+                    }
+                  : undefined,
               });
             },
             (error) => {
@@ -381,6 +475,141 @@ export default function HomeMap({ className }: HomeMapProps) {
     mapStatus !== "error" &&
     mapStatus !== "no-token";
 
+  // Shared search input renderer to avoid duplication
+  const renderSearchInputs = () => (
+    <div className="relative space-y-4">
+      <div className="absolute top-2 bottom-6 left-5 w-0.5 bg-slate-100 dark:bg-slate-800" />
+      {/* Source Input Group */}
+      <div className="relative space-y-1">
+        <div className="group relative">
+          <div className="absolute top-1/2 left-3.5 z-10 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-2 border-[#2bee6c] bg-white" />
+          <SearchBox
+            accessToken={mapboxToken}
+            value={sourceQuery}
+            onChange={(val: string) => setSourceQuery(val)}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            onRetrieve={(res: any) => {
+              if (
+                !res ||
+                !Array.isArray(res.features) ||
+                res.features.length === 0
+              ) {
+                return;
+              }
+              const feature = res.features[0];
+              const [lng, lat] = feature.geometry.coordinates;
+              const address =
+                feature.properties?.place_name ||
+                feature.properties?.full_address ||
+                feature.place_name ||
+                sourceQuery;
+              setSourceLocation({ lng, lat, address });
+              setSourceQuery(address);
+              updateMarker("source", lng, lat);
+              mapRef.current?.flyTo({ center: [lng, lat], zoom: 14 });
+            }}
+            placeholder="Start location..."
+            options={{ language: "en", limit: 5 }}
+            theme={{
+              variables: {
+                fontFamily: "inherit",
+                padding: "12px 48px 12px 42px",
+                borderRadius: "8px",
+                boxShadow: "none",
+              },
+              icons: {
+                search: '<svg viewBox="0 0 1 1"></svg>',
+              },
+            }}
+          />
+          <button
+            onClick={() => handleNavigationClick("source")}
+            disabled={isGettingCurrentLocation === "source"}
+            className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-[#2bee6c] dark:hover:bg-slate-700"
+            title="Use Current Location"
+          >
+            <LocateFixed
+              className={`h-4 w-4 ${isGettingCurrentLocation === "source" ? "animate-spin text-[#2bee6c]" : ""}`}
+            />
+          </button>
+        </div>
+        <button
+          onClick={() => setPickingMode("source")}
+          className="ml-10 flex items-center gap-1 text-[10px] font-medium text-[#2bee6c] hover:text-[#2bee6c]/80 hover:underline disabled:opacity-50"
+          disabled={!!pickingMode}
+        >
+          <Crosshair className="h-3 w-3" />
+          Choose Starting Point on Map
+        </button>
+      </div>
+      {/* Destination Input Group */}
+      <div className="relative space-y-1">
+        <div className="group relative">
+          <div className="absolute top-1/2 left-3.5 z-10 flex -translate-y-1/2 items-center justify-center">
+            <MapPin className="h-4 w-4 text-[#2bee6c]" />
+          </div>
+          <SearchBox
+            accessToken={mapboxToken}
+            value={destQuery}
+            onChange={(val: string) => setDestQuery(val)}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            onRetrieve={(res: any) => {
+              if (
+                !res ||
+                !Array.isArray(res.features) ||
+                res.features.length === 0
+              ) {
+                return;
+              }
+              const feature = res.features[0];
+              const [lng, lat] = feature.geometry.coordinates;
+              const address =
+                feature.properties?.place_name ||
+                feature.properties?.full_address ||
+                feature.place_name ||
+                destQuery;
+              setDestLocation({ lng, lat, address });
+              setDestQuery(address);
+              updateMarker("dest", lng, lat);
+              mapRef.current?.flyTo({ center: [lng, lat], zoom: 14 });
+            }}
+            placeholder="Enter destination..."
+            options={{ language: "en", limit: 5 }}
+            theme={{
+              variables: {
+                fontFamily: "inherit",
+                padding: "12px 48px 12px 42px",
+                borderRadius: "8px",
+                boxShadow: "none",
+              },
+              icons: {
+                search: '<svg viewBox="0 0 1 1"></svg>',
+              },
+            }}
+          />
+          <button
+            onClick={() => handleNavigationClick("dest")}
+            disabled={isGettingCurrentLocation === "dest"}
+            className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-[#2bee6c] dark:hover:bg-slate-700"
+            title="Use Current Location"
+          >
+            <LocateFixed
+              className={`h-4 w-4 ${isGettingCurrentLocation === "dest" ? "animate-spin text-[#2bee6c]" : ""}`}
+            />
+          </button>
+        </div>
+        <button
+          onClick={() => setPickingMode("dest")}
+          className="ml-10 flex items-center gap-1 text-[10px] font-medium text-[#2bee6c] hover:text-[#2bee6c]/80 hover:underline disabled:opacity-50"
+          disabled={!!pickingMode}
+        >
+          <Crosshair className="h-3 w-3" />
+          Choose Destination on Map
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div
       className={`font-display relative min-h-screen overflow-hidden bg-[#f6f8f6] text-slate-800 dark:bg-[#102216] dark:text-slate-100 ${
@@ -402,9 +631,9 @@ export default function HomeMap({ className }: HomeMapProps) {
           </div>
         )}
 
-        {/* Subtle Air Quality Blobs */}
-        <div className="pointer-events-none absolute top-1/3 left-1/4 h-64 w-64 rounded-full bg-[#2bee6c]/10 blur-3xl" />
-        <div className="pointer-events-none absolute right-1/3 bottom-1/4 h-96 w-96 rounded-full bg-[#2bee6c]/5 blur-[100px]" />
+        {/* Subtle Air Quality Blobs (desktop only) */}
+        <div className="pointer-events-none absolute top-1/3 left-1/4 hidden h-64 w-64 rounded-full bg-[#2bee6c]/10 blur-3xl lg:block" />
+        <div className="pointer-events-none absolute right-1/3 bottom-1/4 hidden h-96 w-96 rounded-full bg-[#2bee6c]/5 blur-[100px] lg:block" />
 
         {/* Full Screen Loading Overlay */}
         {shouldShowLoader && (
@@ -443,12 +672,255 @@ export default function HomeMap({ className }: HomeMapProps) {
           </div>
         )}
 
-        {/* Floating Overlays */}
+        {/* ===== MOBILE LAYOUT (< lg) ===== */}
+        <div
+          className={`absolute inset-0 z-20 flex flex-col transition-opacity duration-700 lg:hidden ${shouldShowLoader ? "opacity-0" : "opacity-100"}`}
+        >
+          {/* Spacer for AppNavbar */}
+          <div className="h-14" />
+
+          {/* Mobile Floating Map Controls */}
+          <div className="pointer-events-auto absolute top-18 right-4 flex flex-col gap-3">
+            <button
+              onClick={() => {
+                mapRef.current?.flyTo({
+                  center: sourceLocation
+                    ? [sourceLocation.lng, sourceLocation.lat]
+                    : [0, 0],
+                  zoom: sourceLocation ? 14 : 2,
+                  essential: true,
+                  padding: getMobileMapPadding(),
+                });
+              }}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-lg backdrop-blur dark:bg-slate-900/90"
+            >
+              <LocateFixed className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+            </button>
+          </div>
+
+          {/* Mobile AQI Badge */}
+          <div className="pointer-events-none absolute top-18 left-4">
+            <div className="flex items-center gap-2 rounded-lg bg-[#2bee6c]/90 px-3 py-2 shadow-lg backdrop-blur">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-3.5 w-3.5 text-slate-900"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1z" />
+              </svg>
+              <span className="text-xs font-extrabold text-slate-900 uppercase">
+                AQI: Good
+              </span>
+            </div>
+          </div>
+
+          {/* Spacer to push bottom sheet down */}
+          <div className="flex-1" />
+
+          {/* Mobile Bottom Sheet — Draggable */}
+          <div
+            ref={sheetRef}
+            className="pointer-events-auto flex flex-col items-center"
+            style={{
+              transform: sheetExpanded
+                ? "translateY(0)"
+                : "translateY(calc(100% - 72px))",
+              transition: "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
+              willChange: "transform",
+            }}
+          >
+            {/* Drag Handle Area — always visible for swipe */}
+            <div
+              className="flex w-full cursor-grab flex-col items-center pt-2 pb-0 active:cursor-grabbing"
+              onTouchStart={handleSheetTouchStart}
+              onTouchMove={handleSheetTouchMove}
+              onTouchEnd={handleSheetTouchEnd}
+              onClick={() => {
+                if (!sheetExpanded) setSheetExpanded(true);
+              }}
+            >
+              <div className="mb-3 h-1.5 w-12 rounded-full bg-white/40 shadow-sm" />
+            </div>
+
+            {/* Bottom Card */}
+            <div className="w-full rounded-t-3xl bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.15)] dark:bg-slate-900">
+              {/* Collapsed Peek Bar — shown when sheet is collapsed */}
+              <div
+                className={`flex items-center justify-between px-6 pt-4 pb-3 ${sheetExpanded ? "hidden" : ""}`}
+                onTouchStart={handleSheetTouchStart}
+                onTouchMove={handleSheetTouchMove}
+                onTouchEnd={handleSheetTouchEnd}
+                onClick={() => setSheetExpanded(true)}
+              >
+                <div>
+                  <h2 className="text-base font-extrabold text-slate-800 dark:text-white">
+                    Where are you heading?
+                  </h2>
+                  <p className="text-xs text-slate-400">Swipe up to search</p>
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2bee6c]/10">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 text-[#2bee6c]"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="18 15 12 9 6 15" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Expanded Content */}
+              <div
+                ref={sheetContentRef}
+                className={`overflow-y-auto px-6 pb-6 ${sheetExpanded ? "pt-4" : "hidden"}`}
+                style={{ maxHeight: "60vh" }}
+              >
+                {/* Header */}
+                <div
+                  className="mb-5 space-y-1"
+                  onTouchStart={handleSheetTouchStart}
+                  onTouchMove={handleSheetTouchMove}
+                  onTouchEnd={handleSheetTouchEnd}
+                >
+                  <h1 className="text-2xl font-extrabold text-slate-800 dark:text-white">
+                    Where are you heading?
+                  </h1>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Prioritize your health with clean-air routing.
+                  </p>
+                </div>
+
+                {/* Search Inputs */}
+                {renderSearchInputs()}
+
+                {geoError && (
+                  <div className="mt-3 text-xs text-amber-600 dark:text-amber-400">
+                    {geoError}
+                  </div>
+                )}
+
+                {/* How It Works (compact mobile version) */}
+                <div className="mt-6 border-y border-slate-100 py-4 dark:border-slate-800">
+                  <h3 className="mb-4 text-xs font-bold tracking-widest text-slate-400 uppercase">
+                    How it works
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#2bee6c]/10">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5 text-[#2bee6c]"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <circle cx="11" cy="11" r="8" />
+                          <path d="m21 21-4.3-4.3" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h4 className="text-sm leading-tight font-bold text-slate-700 dark:text-slate-200">
+                          Search
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Enter your destination
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#2bee6c]/10">
+                        <ArrowRight className="h-5 w-5 rotate-180 text-[#2bee6c]" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm leading-tight font-bold text-slate-700 dark:text-slate-200">
+                          Compare
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          View real-time AQI across routes
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#2bee6c]/10">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-5 w-5 text-[#2bee6c]"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2" />
+                          <path d="M9.6 4.6A2 2 0 1 1 11 8H2" />
+                          <path d="M12.6 19.4A2 2 0 1 0 14 16H2" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h4 className="text-sm leading-tight font-bold text-slate-700 dark:text-slate-200">
+                          Breathe
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Enjoy your healthy commute
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CTA Button */}
+                <div className="mt-6">
+                  <button
+                    onClick={handleFindRoute}
+                    disabled={!sourceLocation || !destLocation}
+                    className="group flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#2bee6c] px-5 py-5 text-base font-extrabold text-[#102216] shadow-lg shadow-[#2bee6c]/25 transition-all hover:bg-[#2bee6c]/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="6" cy="19" r="3" />
+                      <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" />
+                      <circle cx="18" cy="5" r="3" />
+                    </svg>
+                    <span>Find Healthy Route</span>
+                  </button>
+                  {routeError && (
+                    <div className="mt-2 text-center text-xs font-semibold text-red-500">
+                      {routeError}
+                    </div>
+                  )}
+                </div>
+
+                {/* Safe area bottom padding */}
+                <div className="h-[max(1rem,env(safe-area-inset-bottom))]" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ===== DESKTOP LAYOUT (lg+) ===== */}
         <main
-          className={`pointer-events-none absolute inset-0 z-20 mt-10 flex h-full w-full flex-col items-start gap-6 px-4 pt-16 transition-opacity duration-700 md:px-8 md:pt-3 lg:flex-row lg:justify-between lg:px-4 ${shouldShowLoader ? "opacity-0" : "opacity-100"}`}
+          className={`pointer-events-none absolute inset-0 z-20 mt-10 hidden h-full w-full flex-col items-start gap-6 px-4 pt-16 transition-opacity duration-700 md:pt-3 lg:flex lg:flex-row lg:justify-between lg:px-4 ${shouldShowLoader ? "opacity-0" : "opacity-100"}`}
         >
           {/* Left Section: Search Card */}
-          <div className="pointer-events-auto mt-1 w-full lg:mt-3 lg:max-w-xs xl:max-w-sm">
+          <div className="pointer-events-auto mt-3 w-full max-w-xs xl:max-w-sm">
             <div className="rounded-xl border border-[#2bee6c]/10 bg-white p-6 shadow-2xl shadow-[#2bee6c]/5 dark:bg-slate-900/90">
               <h2 className="mb-1 text-lg font-bold">
                 Start your healthy journey
@@ -457,157 +929,7 @@ export default function HomeMap({ className }: HomeMapProps) {
                 Enter your route to find the cleanest path.
               </p>
 
-              <div className="relative space-y-4">
-                {" "}
-                {/* Increased spacing for buttons */}
-                <div className="absolute top-2 bottom-6 left-5 w-0.5 bg-slate-100 dark:bg-slate-800" />
-                {/* Source Input Group */}
-                <div className="relative space-y-1">
-                  <div className="group relative">
-                    <div className="absolute top-1/2 left-3.5 z-10 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-2 border-[#2bee6c] bg-white" />
-                    <SearchBox
-                      accessToken={mapboxToken}
-                      value={sourceQuery}
-                      onChange={(val: string) => setSourceQuery(val)}
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      onRetrieve={(res: any) => {
-                        if (
-                          !res ||
-                          !Array.isArray(res.features) ||
-                          res.features.length === 0
-                        ) {
-                          return;
-                        }
-                        const feature = res.features[0];
-                        const [lng, lat] = feature.geometry.coordinates;
-                        const address =
-                          feature.properties?.place_name ||
-                          feature.properties?.full_address ||
-                          feature.place_name ||
-                          sourceQuery;
-                        setSourceLocation({
-                          lng,
-                          lat,
-                          address,
-                        });
-                        setSourceQuery(address);
-                        updateMarker("source", lng, lat);
-                        mapRef.current?.flyTo({
-                          center: [lng, lat],
-                          zoom: 14,
-                        });
-                      }}
-                      placeholder="Current location..."
-                      options={{ language: "en", limit: 5 }}
-                      theme={{
-                        variables: {
-                          fontFamily: "inherit",
-                          padding: "12px 48px 12px 42px",
-                          borderRadius: "8px",
-                          boxShadow: "none",
-                        },
-                        icons: {
-                          search: '<svg viewBox="0 0 1 1"></svg>',
-                        },
-                      }}
-                    />
-                    {/* Navigation/Current Location Button */}
-                    <button
-                      onClick={() => handleNavigationClick("source")}
-                      disabled={isGettingCurrentLocation === "source"}
-                      className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-[#2bee6c] dark:hover:bg-slate-700"
-                      title="Use Current Location"
-                    >
-                      <LocateFixed
-                        className={`h-4 w-4 ${isGettingCurrentLocation === "source" ? "animate-spin text-[#2bee6c]" : ""}`}
-                      />
-                    </button>
-                  </div>
-                  {/* Choose on Map Button for Source */}
-                  <button
-                    onClick={() => setPickingMode("source")}
-                    className="ml-10 flex items-center gap-1 text-[10px] font-medium text-[#2bee6c] hover:text-[#2bee6c]/80 hover:underline disabled:opacity-50"
-                    disabled={!!pickingMode}
-                  >
-                    <Crosshair className="h-3 w-3" />
-                    Choose Starting Point on Map
-                  </button>
-                </div>
-                {/* Destination Input Group */}
-                <div className="relative space-y-1">
-                  <div className="group relative">
-                    <div className="absolute top-1/2 left-3.5 z-10 flex -translate-y-1/2 items-center justify-center">
-                      <MapPin className="h-4 w-4 text-[#2bee6c]" />
-                    </div>
-                    <SearchBox
-                      accessToken={mapboxToken}
-                      value={destQuery}
-                      onChange={(val: string) => setDestQuery(val)}
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      onRetrieve={(res: any) => {
-                        if (
-                          !res ||
-                          !Array.isArray(res.features) ||
-                          res.features.length === 0
-                        ) {
-                          return;
-                        }
-                        const feature = res.features[0];
-                        const [lng, lat] = feature.geometry.coordinates;
-                        const address =
-                          feature.properties?.place_name ||
-                          feature.properties?.full_address ||
-                          feature.place_name ||
-                          destQuery;
-                        setDestLocation({
-                          lng,
-                          lat,
-                          address,
-                        });
-                        setDestQuery(address);
-                        updateMarker("dest", lng, lat);
-                        mapRef.current?.flyTo({
-                          center: [lng, lat],
-                          zoom: 14,
-                        });
-                      }}
-                      placeholder="Search destination..."
-                      options={{ language: "en", limit: 5 }}
-                      theme={{
-                        variables: {
-                          fontFamily: "inherit",
-                          padding: "12px 48px 12px 42px",
-                          borderRadius: "8px",
-                          boxShadow: "none",
-                        },
-                        icons: {
-                          search: '<svg viewBox="0 0 1 1"></svg>',
-                        },
-                      }}
-                    />
-                    {/* Navigation/Current Location Button for Dest */}
-                    <button
-                      onClick={() => handleNavigationClick("dest")}
-                      disabled={isGettingCurrentLocation === "dest"}
-                      className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-[#2bee6c] dark:hover:bg-slate-700"
-                      title="Use Current Location"
-                    >
-                      <LocateFixed
-                        className={`h-4 w-4 ${isGettingCurrentLocation === "dest" ? "animate-spin text-[#2bee6c]" : ""}`}
-                      />
-                    </button>
-                  </div>
-                  {/* Choose on Map Button for Destination */}
-                  <button
-                    onClick={() => setPickingMode("dest")}
-                    className="ml-10 flex items-center gap-1 text-[10px] font-medium text-[#2bee6c] hover:text-[#2bee6c]/80 hover:underline disabled:opacity-50"
-                    disabled={!!pickingMode}
-                  >
-                    <Crosshair className="h-3 w-3" />
-                    Choose Destination on Map
-                  </button>
-                </div>
-              </div>
+              {renderSearchInputs()}
 
               <div className="mt-6">
                 <button
@@ -659,9 +981,9 @@ export default function HomeMap({ className }: HomeMapProps) {
             </div>
           </div>
 
-          {/* Right Section: Onboarding */}
+          {/* Right Section: Onboarding (desktop only) */}
           <div
-            className={`pointer-events-auto mt-1 hidden w-full max-w-md transition-opacity duration-300 lg:mt-3 lg:block xl:max-w-xl ${
+            className={`pointer-events-auto mt-3 w-full max-w-md transition-opacity duration-300 xl:max-w-xl ${
               showRightModal ? "opacity-100" : "pointer-events-none opacity-0"
             }`}
           >

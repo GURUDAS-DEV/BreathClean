@@ -1,10 +1,10 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 
 import { useSearchParams } from "next/navigation";
 
-import { Bookmark } from "lucide-react";
+import { Bookmark, Tag, X } from "lucide-react";
 import { toast } from "sonner";
 
 import InsightToast from "@/components/routes/InsightToast";
@@ -64,6 +64,8 @@ const RouteContent = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
   const [routeName, setRouteName] = useState("");
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const saveInputRef = useRef<HTMLInputElement>(null);
 
   // Parse query parameters
   useEffect(() => {
@@ -222,11 +224,22 @@ const RouteContent = () => {
     setSelectedRouteIndex(index);
   };
 
+  // Open save modal
+  const handleSaveClick = () => {
+    setShowSaveModal(true);
+    // Focus input after modal renders
+    setTimeout(() => saveInputRef.current?.focus(), 100);
+  };
+
   // Save route function
   const saveRoute = async () => {
     if (!source || !destination || routes.length === 0) return;
+    if (!routeName.trim()) {
+      toast.error("Please enter a route name.");
+      return;
+    }
 
-    const nameToSave = routeName.trim() || "Best Route";
+    const nameToSave = routeName.trim();
 
     try {
       const payload = {
@@ -278,6 +291,8 @@ const RouteContent = () => {
       }
 
       toast.success("Route saved successfully!");
+      setShowSaveModal(false);
+      setRouteName("");
     } catch (error) {
       console.error("Save route error:", error);
       toast.error("An error occurred while saving the route");
@@ -298,9 +313,7 @@ const RouteContent = () => {
           destAddress={destAddress}
           selectedMode={selectedMode}
           onModeChange={handleModeChange}
-          routeName={routeName}
-          onRouteNameChange={setRouteName}
-          onSaveRoute={saveRoute}
+          onSaveRoute={handleSaveClick}
           canSave={!isLoading && !error && routes.length > 0}
         />
         <RouteComparisonPanel
@@ -313,6 +326,61 @@ const RouteContent = () => {
         />
         <InsightToast />
         <MapControls />
+
+        {/* Save Route Modal */}
+        {showSaveModal && (
+          <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+              <div className="mb-5 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-slate-800 dark:text-white">
+                  Save Route
+                </h2>
+                <button
+                  onClick={() => setShowSaveModal(false)}
+                  className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <label className="mb-1.5 block text-xs font-bold tracking-wider text-slate-400 uppercase">
+                Route Name <span className="text-red-400">*</span>
+              </label>
+              <div className="flex items-center gap-3 rounded-lg border-2 border-slate-200 bg-slate-50 p-3 transition-all focus-within:border-[#2bee6c] focus-within:ring-2 focus-within:ring-[#2bee6c]/20 dark:border-slate-700 dark:bg-slate-800">
+                <Tag className="text-[#2bee6c]" size={18} />
+                <input
+                  ref={saveInputRef}
+                  className="w-full border-none bg-transparent p-0 text-sm placeholder:text-slate-400 focus:ring-0 focus:outline-none dark:text-white"
+                  placeholder="e.g. Morning Commute"
+                  type="text"
+                  value={routeName}
+                  onChange={(e) => setRouteName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && routeName.trim()) saveRoute();
+                  }}
+                />
+              </div>
+              {!routeName.trim() && (
+                <p className="mt-1.5 text-[11px] text-slate-400">
+                  Give your route a name to save it.
+                </p>
+              )}
+
+              <button
+                onClick={saveRoute}
+                disabled={!routeName.trim()}
+                className={`mt-5 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-bold shadow-lg transition-all ${
+                  routeName.trim()
+                    ? "bg-[#2bee6c] text-slate-900 shadow-[#2bee6c]/20 hover:bg-[#2bee6c]/90"
+                    : "cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500"
+                }`}
+              >
+                <Bookmark className="h-5 w-5" />
+                Save Route
+              </button>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

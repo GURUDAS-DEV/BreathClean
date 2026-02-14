@@ -20,6 +20,7 @@ interface RouteInsightsPanelProps {
   route: ISavedRoute;
   subRouteIndex: number;
   onDelete: (routeId: string) => void;
+  onSubRouteSelect?: (index: number) => void;
 }
 
 function getAqiBadge(score: number | null | undefined) {
@@ -49,6 +50,7 @@ export default function RouteInsightsPanel({
   route,
   subRouteIndex,
   onDelete,
+  onSubRouteSelect,
 }: RouteInsightsPanelProps) {
   const subRoute = route.routes[subRouteIndex];
   const aqi = getAqiBadge(subRoute.lastComputedScore);
@@ -66,8 +68,8 @@ export default function RouteInsightsPanel({
   const isBest = subRouteIndex === bestIdx;
 
   return (
-    <div className="flex h-full w-full flex-col border-l border-slate-200 bg-white lg:w-[360px] dark:border-slate-700 dark:bg-[#102216]">
-      <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+    <div className="flex h-full w-full flex-col bg-white lg:w-[360px] lg:border-l lg:border-slate-200 dark:bg-[#102216] dark:lg:border-slate-700">
+      <div className="hidden border-b border-slate-100 px-5 py-4 lg:block dark:border-slate-800">
         <h2 className="text-base font-bold text-slate-900 dark:text-white">
           Route Insights
         </h2>
@@ -177,10 +179,11 @@ export default function RouteInsightsPanel({
                 return (
                   <div
                     key={i}
+                    onClick={() => onSubRouteSelect?.(i)}
                     className={cn(
-                      "flex items-center justify-between rounded-lg px-3 py-2 text-xs",
+                      "flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-xs transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50",
                       i === subRouteIndex
-                        ? "bg-[#2bee6c]/10 font-semibold text-slate-900 dark:text-white"
+                        ? "bg-[#2bee6c]/10 font-semibold text-slate-900 hover:bg-[#2bee6c]/15 dark:text-white dark:hover:bg-[#2bee6c]/20"
                         : "text-slate-500"
                     )}
                   >

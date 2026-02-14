@@ -5,8 +5,6 @@ export default function middleware(request: NextRequest): NextResponse {
   const refreshToken = request.cookies.get("refreshToken");
   const isAuthenticated = Boolean(refreshToken);
 
-  console.log("Middleware executed. isAuthenticated:", isAuthenticated);
-
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/login")) {
