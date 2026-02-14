@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 
-import { toast, Toaster } from "sonner";
+import { Toaster } from "sonner";
 
 import "./globals.css";
 
