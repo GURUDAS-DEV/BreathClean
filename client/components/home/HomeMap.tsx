@@ -53,6 +53,7 @@ export default function HomeMap({ className }: HomeMapProps) {
   const [isLocating, setIsLocating] = useState(!!mapboxToken);
   const [mapError, setMapError] = useState<string | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [routeError, setRouteError] = useState<string | null>(null);
 
   // Selection States
   const [sourceLocation, setSourceLocation] = useState<LocationData | null>(
@@ -121,12 +122,13 @@ export default function HomeMap({ className }: HomeMapProps) {
   };
 
   const handleFindRoute = () => {
+    setRouteError(null);
     if (!sourceLocation) {
-      console.log("Please select a starting location.");
+      setRouteError("Please select a starting location.");
       return;
     }
     if (!destLocation) {
-      console.log("Please select a destination.");
+      setRouteError("Please select a destination.");
       return;
     }
 
@@ -134,7 +136,7 @@ export default function HomeMap({ className }: HomeMapProps) {
       sourceLocation.lng === destLocation.lng &&
       sourceLocation.lat === destLocation.lat
     ) {
-      console.log("Start and destination cannot be the same.");
+      setRouteError("Start and destination cannot be the same.");
       return;
     }
 
@@ -615,6 +617,11 @@ export default function HomeMap({ className }: HomeMapProps) {
                   <span>Find Cleanest Route</span>
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </button>
+                {routeError && (
+                  <div className="mt-2 text-center text-xs font-semibold text-red-500">
+                    {routeError}
+                  </div>
+                )}
               </div>
 
               {geoError && (

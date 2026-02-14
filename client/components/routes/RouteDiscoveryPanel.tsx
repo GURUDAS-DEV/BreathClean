@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { useRouter } from "next/navigation";
 
 import { Activity, Bike, Car, CircleDot, MapPin, User } from "lucide-react";
@@ -11,7 +13,7 @@ type RouteDiscoveryPanelProps = {
   destAddress: string;
   selectedMode: TravelMode;
   onModeChange: (mode: TravelMode) => void;
-  onFindRoutes?: () => void;
+  onAvoidBusyRoadsChange?: (avoid: boolean) => void;
 };
 
 export default function RouteDiscoveryPanel({
@@ -19,9 +21,18 @@ export default function RouteDiscoveryPanel({
   destAddress,
   selectedMode,
   onModeChange,
-  onFindRoutes,
+  onAvoidBusyRoadsChange,
 }: RouteDiscoveryPanelProps) {
   const router = useRouter();
+  const [avoidBusyRoads, setAvoidBusyRoads] = useState(false);
+
+  const toggleAvoidBusyRoads = () => {
+    const newState = !avoidBusyRoads;
+    setAvoidBusyRoads(newState);
+    if (onAvoidBusyRoadsChange) {
+      onAvoidBusyRoadsChange(newState);
+    }
+  };
 
   const handleChangeRoute = () => {
     router.push("/home");
@@ -129,9 +140,22 @@ export default function RouteDiscoveryPanel({
               <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
                 Avoid Busy Roads
               </span>
-              <div className="relative h-5 w-10 rounded-full bg-[#2bee6c]">
-                <div className="absolute top-0.5 right-0.5 size-4 rounded-full bg-white shadow-sm"></div>
-              </div>
+              <button
+                role="switch"
+                aria-checked={avoidBusyRoads}
+                onClick={toggleAvoidBusyRoads}
+                className={`relative h-6 w-11 rounded-full transition-colors focus:ring-2 focus:ring-[#2bee6c] focus:ring-offset-2 focus:outline-none dark:focus:ring-offset-slate-900 ${
+                  avoidBusyRoads
+                    ? "bg-[#2bee6c]"
+                    : "bg-slate-300 dark:bg-slate-600"
+                }`}
+              >
+                <span
+                  className={`absolute top-1 left-1 h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                    avoidBusyRoads ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
             </div>
           </div>
         </div>

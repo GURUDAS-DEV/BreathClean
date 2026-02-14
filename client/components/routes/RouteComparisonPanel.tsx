@@ -4,13 +4,16 @@ import { AlertTriangle, Ruler, Timer } from "lucide-react";
 
 type TravelMode = "walking" | "driving" | "cycling";
 
-type RouteData = {
+export type RouteData = {
   distance: number;
   duration: number;
   geometry: {
     coordinates: [number, number][];
     type: string;
   };
+  aqiScore?: number;
+  pollutionReductionPct?: number;
+  exposureWarning?: string;
 };
 
 type RouteComparisonPanelProps = {
@@ -43,6 +46,16 @@ export default function RouteComparisonPanel({
   const formatDistance = (meters: number): string => {
     const km = (meters / 1000).toFixed(1);
     return `${km} km`;
+  };
+
+  const getRouteLabel = (route: RouteData, allRoutes: RouteData[]) => {
+    // Find max AQI and min Duration
+    const maxAqi = Math.max(...allRoutes.map((r) => r.aqiScore || 0));
+    const minDuration = Math.min(...allRoutes.map((r) => r.duration));
+
+    if (route.aqiScore === maxAqi && maxAqi > 0) return "Cleanest Path";
+    if (route.duration === minDuration) return "Fastest";
+    return "Balanced";
   };
 
   return (
@@ -99,11 +112,7 @@ export default function RouteComparisonPanel({
               <div className="mb-4 flex items-start justify-between">
                 <div>
                   <h3 className="font-bold text-slate-800 dark:text-white">
-                    {index === 0
-                      ? "Cleanest Path"
-                      : index === 1
-                        ? "Balanced"
-                        : "Fastest"}
+                    {getRouteLabel(route, routes)}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     via{" "}
@@ -116,9 +125,13 @@ export default function RouteComparisonPanel({
                 </div>
                 <div className="text-right">
                   <span
-                    className={`text-2xl font-black ${index === 0 ? "text-[#2bee6c]" : "text-slate-500 dark:text-slate-400"}`}
+                    className={`text-2xl font-black ${
+                      (route.aqiScore || 0) >= 80
+                        ? "text-[#2bee6c]"
+                        : "text-slate-500 dark:text-slate-400"
+                    }`}
                   >
-                    {index === 0 ? 92 : index === 1 ? 74 : 42}
+                    {route.aqiScore ?? "(demo)"}
                   </span>
                   <span className="block text-[10px] font-bold text-slate-400">
                     AQI SCORE
@@ -139,20 +152,20 @@ export default function RouteComparisonPanel({
                   </span>
                 </div>
               </div>
-              {index === 0 && (
+              {route.pollutionReductionPct !== undefined && (
                 <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-700">
                   <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                     Pollution Exposure
                   </span>
                   <span className="text-xs font-bold text-[#2bee6c]">
-                    -34% avg.
+                    -{route.pollutionReductionPct}% avg.
                   </span>
                 </div>
               )}
-              {index === 2 && (
+              {route.exposureWarning && (
                 <div className="mt-2 flex items-center gap-1 text-[10px] font-bold text-red-500">
                   <AlertTriangle size={14} />
-                  High PM2.5 Exposure Zone
+                  {route.exposureWarning}
                 </div>
               )}
             </div>

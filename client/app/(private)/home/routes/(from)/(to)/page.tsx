@@ -23,6 +23,9 @@ type RouteData = {
     coordinates: [number, number][];
     type: string;
   };
+  aqiScore?: number;
+  pollutionReductionPct?: number;
+  exposureWarning?: string;
 };
 
 type TravelMode = "walking" | "driving" | "cycling";
@@ -37,6 +40,13 @@ type MapboxRoute = {
 };
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
+
+if (!MAPBOX_TOKEN) {
+  const warning = `BreathClean Dev Warning: MAPBOX_TOKEN is empty (value: "${MAPBOX_TOKEN}"). Mapbox API calls will fail.`;
+  if (process.env.NODE_ENV !== "production") {
+    console.warn(warning);
+  }
+}
 
 const RouteContent = () => {
   const searchParams = useSearchParams();
@@ -77,17 +87,34 @@ const RouteContent = () => {
 
   // Reverse geocode to get address from coordinates
   const reverseGeocode = async (lng: number, lat: number): Promise<string> => {
+    if (!MAPBOX_TOKEN) {
+      console.error(
+        `Aborting reverseGeocode: MAPBOX_TOKEN is missing (value: "${MAPBOX_TOKEN}").`
+      );
+      return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    }
+
     try {
       const response = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}`
       );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        const errorMsg = `Geocoding API Error: ${response.status} ${response.statusText}`;
+        console.error(`${errorMsg} | Body: ${errorText}`);
+        // Return clear error string to caller instead of fallback coordinates
+        return `${errorMsg}`;
+      }
+
       const data = await response.json();
       if (data.features && data.features.length > 0) {
         return data.features[0].place_name;
       }
       return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     } catch (error) {
-      console.error("Geocoding failed:", error);
+      // Network/Runtime errors: Log and return fallback coordinates
+      console.error("Geocoding network/runtime error:", error);
       return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
   };
@@ -96,6 +123,13 @@ const RouteContent = () => {
   const fetchRoutes = useCallback(
     async (mode: TravelMode) => {
       if (!source || !destination) return;
+      if (!MAPBOX_TOKEN) {
+        setError("Mapbox configuration error: Missing Token");
+        console.error(
+          `Aborting fetchRoutes: MAPBOX_TOKEN is missing (value: "${MAPBOX_TOKEN}").`
+        );
+        return;
+      }
 
       setIsLoading(true);
       setError(null);
@@ -108,17 +142,60 @@ const RouteContent = () => {
         const url = `https://api.mapbox.com/directions/v5/${profile}/${coordinates}?alternatives=true&geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`;
 
         const response = await fetch(url);
+
+        // Check for HTTP errors before parsing JSON
+        if (!response.ok) {
+          let errorDetails = response.statusText;
+          try {
+            const errorClone = response.clone();
+            const errorJson = await errorClone.json();
+            errorDetails = JSON.stringify(errorJson);
+          } catch {
+            errorDetails = await response.text();
+          }
+
+          console.error(
+            `FetchRoutes HTTP error: ${response.status} ${response.statusText}`,
+            errorDetails
+          );
+          setError(
+            `Route fetch failed: ${response.status} ${response.statusText}`
+          );
+          setRoutes([]);
+          return;
+        }
+
         const data = await response.json();
 
         if (data.code === "Ok" && data.routes && data.routes.length > 0) {
           // Take up to 3 routes
           const fetchedRoutes = data.routes
             .slice(0, 3)
-            .map((route: MapboxRoute) => ({
-              distance: route.distance,
-              duration: route.duration,
-              geometry: route.geometry,
-            }));
+            .map((route: MapboxRoute, index: number) => {
+              // Placeholder/Demo data logic
+              let aqiScore = 80;
+              let pollutionReductionPct: number | undefined = undefined;
+              let exposureWarning: string | undefined = undefined;
+
+              if (index === 0) {
+                aqiScore = 92;
+                pollutionReductionPct = 34;
+              } else if (index === 1) {
+                aqiScore = 74;
+              } else {
+                aqiScore = 42;
+                exposureWarning = "High PM2.5 Exposure Zone";
+              }
+
+              return {
+                distance: route.distance,
+                duration: route.duration,
+                geometry: route.geometry,
+                aqiScore,
+                pollutionReductionPct,
+                exposureWarning,
+              };
+            });
           setRoutes(fetchedRoutes);
         } else {
           setError("No routes found. Please try different locations.");
@@ -155,6 +232,11 @@ const RouteContent = () => {
 
   return (
     <div className="font-display flex h-screen flex-col overflow-hidden bg-[#f6f8f6] text-slate-900 dark:bg-[#102216]">
+      {!MAPBOX_TOKEN && process.env.NODE_ENV !== "production" && (
+        <div className="absolute top-20 left-1/2 z-[100] -translate-x-1/2 animate-bounce rounded-full bg-red-600 px-6 py-2 text-sm font-bold text-white shadow-xl">
+          DEV WARNING: MAPBOX_TOKEN is missing!
+        </div>
+      )}
       <main className="relative mt-12 flex-1 overflow-hidden">
         <RouteMapBackground
           source={source}
@@ -176,7 +258,11 @@ const RouteContent = () => {
           selectedRouteIndex={selectedRouteIndex}
           onRouteSelect={handleRouteSelect}
         />
-        <InsightToast />
+        {!isLoading && !error && routes.length > 0 && (
+          <InsightToast
+            pm25Reduction={routes[selectedRouteIndex]?.pollutionReductionPct}
+          />
+        )}
         <MapControls />
       </main>
     </div>
