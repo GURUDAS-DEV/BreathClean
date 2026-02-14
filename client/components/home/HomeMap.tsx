@@ -405,6 +405,13 @@ export default function HomeMap({ className }: HomeMapProps) {
                       onChange={(val: string) => setSourceQuery(val)}
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       onRetrieve={(res: any) => {
+                        if (
+                          !res ||
+                          !Array.isArray(res.features) ||
+                          res.features.length === 0
+                        ) {
+                          return;
+                        }
                         const feature = res.features[0];
                         const [lng, lat] = feature.geometry.coordinates;
                         const address =
@@ -472,6 +479,13 @@ export default function HomeMap({ className }: HomeMapProps) {
                       onChange={(val: string) => setDestQuery(val)}
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       onRetrieve={(res: any) => {
+                        if (
+                          !res ||
+                          !Array.isArray(res.features) ||
+                          res.features.length === 0
+                        ) {
+                          return;
+                        }
                         const feature = res.features[0];
                         const [lng, lat] = feature.geometry.coordinates;
                         const address =
