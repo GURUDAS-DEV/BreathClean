@@ -245,18 +245,14 @@ const RouteContent = () => {
             coordinates: [destination.lng, destination.lat],
           },
         },
-        routes: [
-          {
-            distance: routes[selectedRouteIndex].distance,
-            duration: routes[selectedRouteIndex].duration,
-            routeGeometry: routes[selectedRouteIndex].geometry,
-            lastComputedScore:
-              routes[selectedRouteIndex].aqiScore ||
-              Math.floor(Math.random() * 100),
-            lastComputedAt: new Date(),
-            travelMode: selectedMode,
-          },
-        ],
+        routes: routes.map((route) => ({
+          distance: route.distance / 1000,
+          duration: route.duration / 60,
+          routeGeometry: route.geometry,
+          lastComputedScore: route.aqiScore || Math.floor(Math.random() * 100),
+          lastComputedAt: new Date(),
+          travelMode: selectedMode,
+        })),
         isFavorite: false,
       };
 
@@ -304,6 +300,8 @@ const RouteContent = () => {
           onModeChange={handleModeChange}
           routeName={routeName}
           onRouteNameChange={setRouteName}
+          onSaveRoute={saveRoute}
+          canSave={!isLoading && !error && routes.length > 0}
         />
         <RouteComparisonPanel
           routes={routes}
@@ -315,19 +313,6 @@ const RouteContent = () => {
         />
         <InsightToast />
         <MapControls />
-
-        {/* Save Route Button - Bottom Right */}
-        {!isLoading && !error && routes.length > 0 && (
-          <button
-            onClick={saveRoute}
-            className="absolute right-6 bottom-10 z-40 flex items-center gap-3 rounded-xl bg-white px-6 py-3.5 font-bold text-slate-800 shadow-2xl transition-all hover:scale-105 hover:bg-slate-50 active:scale-95 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
-          >
-            <div className="flex size-8 items-center justify-center rounded-full bg-[#2bee6c]/10 text-[#2bee6c]">
-              <Bookmark className="size-4" />
-            </div>
-            <span>Save Route</span>
-          </button>
-        )}
       </main>
     </div>
   );

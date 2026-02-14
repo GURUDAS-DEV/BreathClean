@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
-
 import { useRouter } from "next/navigation";
 
 import {
-  Activity,
   Bike,
+  Bookmark,
   Car,
+  ChevronLeft,
   CircleDot,
   Info,
   MapPin,
@@ -24,6 +23,8 @@ type RouteDiscoveryPanelProps = {
   onModeChange: (mode: TravelMode) => void;
   routeName: string;
   onRouteNameChange: (name: string) => void;
+  onSaveRoute: () => void;
+  canSave: boolean;
 };
 
 export default function RouteDiscoveryPanel({
@@ -33,6 +34,8 @@ export default function RouteDiscoveryPanel({
   onModeChange,
   routeName,
   onRouteNameChange,
+  onSaveRoute,
+  canSave,
 }: RouteDiscoveryPanelProps) {
   const router = useRouter();
 
@@ -43,13 +46,24 @@ export default function RouteDiscoveryPanel({
   return (
     <aside className="absolute top-6 left-6 z-40 w-80">
       <div className="flex flex-col overflow-hidden rounded-xl border border-white bg-white/95 shadow-2xl backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/95">
-        <div className="border-b border-slate-100 p-5 dark:border-slate-800">
-          <h1 className="mb-1 text-lg font-bold text-slate-800 dark:text-white">
-            Route Discovery
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Find the path with lowest pollution
-          </p>
+        <div className="flex items-center justify-between border-b border-slate-100 p-5 dark:border-slate-800">
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={handleChangeRoute}
+              className="flex items-center justify-center rounded-lg bg-slate-100 p-2 text-slate-600 transition-all hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+              title="Change Route"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <div>
+              <h1 className="mb-1 text-lg font-bold text-slate-800 dark:text-white">
+                Route Discovery
+              </h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Find the path with lowest pollution
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-5 overflow-y-auto p-5">
@@ -166,11 +180,16 @@ export default function RouteDiscoveryPanel({
 
         <div className="border-t border-slate-100 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-800/50">
           <button
-            onClick={handleChangeRoute}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2bee6c] py-3.5 font-bold text-slate-900 shadow-lg shadow-[#2bee6c]/20 transition-all hover:bg-[#2bee6c]/90"
+            onClick={onSaveRoute}
+            disabled={!canSave}
+            className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-bold shadow-lg transition-all ${
+              canSave
+                ? "bg-[#2bee6c] text-slate-900 shadow-[#2bee6c]/20 hover:bg-[#2bee6c]/90"
+                : "cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500"
+            }`}
           >
-            <Activity className="h-5 w-5" />
-            Change Route
+            <Bookmark className="h-5 w-5" />
+            Save Route
           </button>
         </div>
       </div>

@@ -26,6 +26,8 @@ export default function ProfileCard({ user }: { user: UserData }) {
           <div className="relative">
             {user.picture ? (
               <Image
+                width={100}
+                height={100}
                 src={user.picture}
                 alt={user.name}
                 className="h-28 w-28 rounded-2xl border-4 border-white object-cover shadow-lg"

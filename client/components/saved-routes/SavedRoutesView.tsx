@@ -99,7 +99,7 @@ export default function SavedRoutesView({
 
             {/* Right panel - insights */}
             {selectedRoute && (
-              <div className="hidden xl:block">
+              <div className="hidden overflow-auto xl:block">
                 <RouteInsightsPanel
                   route={selectedRoute}
                   subRouteIndex={selectedSubRouteIndex}

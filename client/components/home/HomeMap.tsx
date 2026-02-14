@@ -318,14 +318,15 @@ export default function HomeMap({ className }: HomeMapProps) {
 
     initMap();
 
+    const markersInstance = markersRef.current; // Capture ref value
+
     return () => {
       isCancelled = true;
       cleanupRef.current();
 
       // Safe Cleanup
-      const markers = markersRef.current;
-      if (markers.source) markers.source.remove();
-      if (markers.dest) markers.dest.remove();
+      if (markersInstance.source) markersInstance.source.remove();
+      if (markersInstance.dest) markersInstance.dest.remove();
 
       mapRef.current = null;
     };
