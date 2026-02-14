@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { SearchBox } from "@mapbox/search-js-react";
+import dynamic from "next/dynamic";
+
 import {
   ArrowRight,
   Crosshair,
@@ -11,8 +12,13 @@ import {
   MapPin,
   ShieldCheck,
 } from "lucide-react";
-import mapboxgl from "mapbox-gl";
+import type { Map, MapMouseEvent, Marker } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+
+const SearchBox = dynamic(
+  () => import("@mapbox/search-js-react").then((mod) => mod.SearchBox),
+  { ssr: false }
+);
 
 type HomeMapProps = {
   className?: string;
@@ -26,12 +32,14 @@ type LocationData = {
 
 export default function HomeMap({ className }: HomeMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<Map | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapboxglRef = useRef<any>(null);
   const [showRightModal, setShowRightModal] = useState(true);
   const revealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const markersRef = useRef<{
-    source: mapboxgl.Marker | null;
-    dest: mapboxgl.Marker | null;
+    source: Marker | null;
+    dest: Marker | null;
   }>({ source: null, dest: null });
 
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -93,7 +101,8 @@ export default function HomeMap({ className }: HomeMapProps) {
   // Helper to update markers
   const updateMarker = (type: "source" | "dest", lng: number, lat: number) => {
     const map = mapRef.current;
-    if (!map) return;
+    const mapboxgl = mapboxglRef.current;
+    if (!map || !mapboxgl) return;
 
     // Remove existing marker if any
     if (markersRef.current[type]) {
@@ -161,107 +170,135 @@ export default function HomeMap({ className }: HomeMapProps) {
       return;
     }
 
-    mapboxgl.accessToken = mapboxToken;
-
     let isCancelled = false;
-    const map = new mapboxgl.Map({
-      container,
-      style: "mapbox://styles/mapbox/light-v11",
-      center: [0, 0],
-      zoom: 2,
-      attributionControl: true,
-    });
+    const cleanupRef = { current: () => {} };
 
-    mapRef.current = map;
-    map.addControl(
-      new mapboxgl.NavigationControl({ showCompass: false }),
-      "bottom-right"
-    );
+    const initMap = async () => {
+      try {
+        const mapboxglModule = await import("mapbox-gl");
+        const mapboxgl = mapboxglModule.default;
+        mapboxglRef.current = mapboxgl;
 
-    const handleMapLoad = () => setMapStatus("ready");
-    const handleMapError = () => {
-      setMapStatus("error");
-      setMapError("Map failed to load. Check your token or network.");
-      setIsLocating(false);
-    };
+        mapboxgl.accessToken = mapboxToken;
 
-    map.on("load", handleMapLoad);
-    map.on("error", handleMapError);
-
-    const hideRightModal = () => {
-      if (revealTimeoutRef.current) clearTimeout(revealTimeoutRef.current);
-      setShowRightModal(false);
-    };
-    const scheduleShowRightModal = () => {
-      // Only show if NOT picking
-      // We'll handle this in the picking logic
-      if (revealTimeoutRef.current) clearTimeout(revealTimeoutRef.current);
-      revealTimeoutRef.current = setTimeout(() => {
-        setShowRightModal(true);
-      }, 1000);
-    };
-
-    map.on("movestart", hideRightModal);
-    map.on("moveend", scheduleShowRightModal);
-
-    // Initial Geolocation
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          if (isCancelled) return;
-          const { longitude, latitude } = position.coords;
-
-          // Fetch address for current location
-          const address = await reverseGeocode(longitude, latitude);
-          if (isCancelled) return;
-
-          setSourceLocation({ lng: longitude, lat: latitude, address });
-          setSourceQuery(address);
-          updateMarker("source", longitude, latitude);
-
-          map.once("moveend", () => {
-            if (!isCancelled) setIsLocating(false);
-          });
-
-          map.flyTo({
-            center: [longitude, latitude],
-            zoom: 13,
-            essential: true,
-          });
-        },
-        (error) => {
-          if (isCancelled) return;
-          setGeoError(error.message || "Location permission was denied.");
-          setIsLocating(false);
-          map.flyTo({ center: [0, 0], zoom: 2 });
-        },
-        { enableHighAccuracy: true, timeout: 8000 }
-      );
-    } else {
-      setTimeout(() => {
         if (isCancelled) return;
-        setGeoError("Geolocation is not supported in this browser.");
-        setIsLocating(false);
-      }, 0);
-    }
 
-    const resize = () => map.resize();
-    window.addEventListener("resize", resize);
+        const map = new mapboxgl.Map({
+          container,
+          style: "mapbox://styles/mapbox/light-v11",
+          center: [0, 0],
+          zoom: 2,
+          attributionControl: true,
+        });
+
+        mapRef.current = map;
+
+        map.addControl(
+          new mapboxgl.NavigationControl({ showCompass: false }),
+          "bottom-right"
+        );
+
+        const handleMapLoad = () => {
+          if (!isCancelled) setMapStatus("ready");
+        };
+
+        const handleMapError = () => {
+          if (!isCancelled) {
+            setMapStatus("error");
+            setMapError("Map failed to load. Check your token or network.");
+            setIsLocating(false);
+          }
+        };
+
+        map.on("load", handleMapLoad);
+        map.on("error", handleMapError);
+
+        const hideRightModal = () => {
+          if (revealTimeoutRef.current) clearTimeout(revealTimeoutRef.current);
+          setShowRightModal(false);
+        };
+        const scheduleShowRightModal = () => {
+          if (revealTimeoutRef.current) clearTimeout(revealTimeoutRef.current);
+          revealTimeoutRef.current = setTimeout(() => {
+            setShowRightModal(true);
+          }, 1000);
+        };
+
+        map.on("movestart", hideRightModal);
+        map.on("moveend", scheduleShowRightModal);
+
+        // Initial Geolocation
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            async (position) => {
+              if (isCancelled) return;
+              const { longitude, latitude } = position.coords;
+
+              // Fetch address for current location
+              const address = await reverseGeocode(longitude, latitude);
+              if (isCancelled) return;
+
+              setSourceLocation({ lng: longitude, lat: latitude, address });
+              setSourceQuery(address);
+              updateMarker("source", longitude, latitude);
+
+              map.once("moveend", () => {
+                if (!isCancelled) setIsLocating(false);
+              });
+
+              map.flyTo({
+                center: [longitude, latitude],
+                zoom: 13,
+                essential: true,
+              });
+            },
+            (error) => {
+              if (isCancelled) return;
+              setGeoError(error.message || "Location permission was denied.");
+              setIsLocating(false);
+              map.flyTo({ center: [0, 0], zoom: 2 });
+            },
+            { enableHighAccuracy: true, timeout: 8000 }
+          );
+        } else {
+          setTimeout(() => {
+            if (isCancelled) return;
+            setGeoError("Geolocation is not supported in this browser.");
+            setIsLocating(false);
+          }, 0);
+        }
+
+        const resize = () => map.resize();
+        window.addEventListener("resize", resize);
+
+        cleanupRef.current = () => {
+          window.removeEventListener("resize", resize);
+          map.off("movestart", hideRightModal);
+          map.off("moveend", scheduleShowRightModal);
+          map.off("load", handleMapLoad);
+          map.off("error", handleMapError);
+          map.remove();
+        };
+      } catch (err) {
+        console.error("Error loading mapbox-gl:", err);
+        if (!isCancelled) {
+          setMapStatus("error");
+          setMapError("Failed to load map library.");
+        }
+      }
+    };
+
+    initMap();
 
     return () => {
       isCancelled = true;
-      map.off("movestart", hideRightModal);
-      map.off("moveend", scheduleShowRightModal);
-      map.off("load", handleMapLoad);
-      map.off("error", handleMapError);
+      cleanupRef.current();
 
       // Safe Cleanup
       const markers = markersRef.current;
       if (markers.source) markers.source.remove();
       if (markers.dest) markers.dest.remove();
 
-      window.removeEventListener("resize", resize);
-      map.remove();
       mapRef.current = null;
     };
   }, [mapboxToken, reverseGeocode]);
@@ -272,7 +309,7 @@ export default function HomeMap({ className }: HomeMapProps) {
     const map = mapRef.current;
     if (!map) return;
 
-    const onMapClick = async (e: mapboxgl.MapMouseEvent) => {
+    const onMapClick = async (e: MapMouseEvent) => {
       if (!pickingMode) return;
 
       const { lng, lat } = e.lngLat;
