@@ -17,8 +17,7 @@ export const tokenVerify = (
     ) as JwtPayload;
     req.userId = decoded.userId;
     return next();
-  } catch (error) {
-    console.log("Error in tokenVerify:", error);
-    return res.status(500).json({ errorMsg: "Internal server error", error });
+  } catch {
+    return res.status(500).json({ errorMsg: "Internal server error" });
   }
 };

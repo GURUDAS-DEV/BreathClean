@@ -37,12 +37,13 @@ export default function HomeMap({ className }: HomeMapProps) {
     if (!mapboxToken) return;
     mapboxgl.accessToken = mapboxToken;
 
+    let isCancelled = false;
     const map = new mapboxgl.Map({
       container,
       style: "mapbox://styles/mapbox/light-v11",
       center: [0, 0],
       zoom: 2,
-      attributionControl: false,
+      attributionControl: true,
     });
 
     mapRef.current = map;
@@ -80,6 +81,7 @@ export default function HomeMap({ className }: HomeMapProps) {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          if (isCancelled) return;
           const { longitude, latitude } = position.coords;
           map.flyTo({
             center: [longitude, latitude],
@@ -92,6 +94,7 @@ export default function HomeMap({ className }: HomeMapProps) {
             .addTo(map);
         },
         (error) => {
+          if (isCancelled) return;
           setGeoError(error.message || "Location permission was denied.");
           map.flyTo({ center: [0, 0], zoom: 2 });
         },
@@ -99,6 +102,7 @@ export default function HomeMap({ className }: HomeMapProps) {
       );
     } else {
       setTimeout(() => {
+        if (isCancelled) return;
         setGeoError("Geolocation is not supported in this browser.");
       }, 0);
     }
@@ -114,6 +118,7 @@ export default function HomeMap({ className }: HomeMapProps) {
     }
 
     return () => {
+      isCancelled = true;
       map.off("movestart", hideRightModal);
       map.off("moveend", scheduleShowRightModal);
       map.off("load", handleMapLoad);
