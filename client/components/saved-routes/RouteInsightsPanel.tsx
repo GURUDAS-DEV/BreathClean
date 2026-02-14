@@ -8,6 +8,7 @@ import {
   Route,
   Ruler,
   ShieldCheck,
+  Trash2,
   Wind,
 } from "lucide-react";
 
@@ -18,6 +19,7 @@ import type { ISavedRoute } from "./types";
 interface RouteInsightsPanelProps {
   route: ISavedRoute;
   subRouteIndex: number;
+  onDelete: (routeId: string) => void;
 }
 
 function getAqiBadge(score: number | null | undefined) {
@@ -46,6 +48,7 @@ function formatDistance(km: number) {
 export default function RouteInsightsPanel({
   route,
   subRouteIndex,
+  onDelete,
 }: RouteInsightsPanelProps) {
   const subRoute = route.routes[subRouteIndex];
   const aqi = getAqiBadge(subRoute.lastComputedScore);
@@ -242,6 +245,13 @@ export default function RouteInsightsPanel({
           <Navigation className="h-4 w-4" />
           Start Route
         </Link>
+        <button
+          onClick={() => onDelete(route._id)}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-bold text-red-500 transition-all hover:bg-red-50 hover:text-red-600 active:scale-95 dark:text-red-400 dark:hover:bg-red-900/20 dark:hover:text-red-300"
+        >
+          <Trash2 className="h-4 w-4" />
+          Delete Route
+        </button>
       </div>
     </div>
   );

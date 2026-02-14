@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, MapPin, Star } from "lucide-react";
+import { Clock, MapPin, Star, Trash2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -12,6 +12,7 @@ interface SavedRouteCardProps {
   selectedSubRouteIndex: number;
   onSelect: (routeId: string) => void;
   onSubRouteSelect: (index: number) => void;
+  onDelete: (routeId: string) => void;
 }
 
 function getAqiColor(score: number | null | undefined) {
@@ -47,6 +48,7 @@ export default function SavedRouteCard({
   selectedSubRouteIndex,
   onSelect,
   onSubRouteSelect,
+  onDelete,
 }: SavedRouteCardProps) {
   const bestIdx = route.routes.reduce(
     (best, r, i) => {
@@ -76,6 +78,16 @@ export default function SavedRouteCard({
               <Star className="h-3.5 w-3.5 flex-shrink-0 fill-yellow-400 text-yellow-400" />
             )}
           </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(route._id);
+            }}
+            className="hidden p-1 text-slate-400 transition-colors group-hover:block hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400"
+            aria-label="Delete route"
+          >
+            <Trash2 size={14} />
+          </button>
         </div>
         <span className="ml-2 flex-shrink-0 text-[10px] text-slate-400">
           {route.routes.length} route{route.routes.length > 1 ? "s" : ""}

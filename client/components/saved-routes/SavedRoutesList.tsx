@@ -11,6 +11,7 @@ interface SavedRoutesListProps {
   selectedSubRouteIndex: number;
   onSelectRoute: (routeId: string) => void;
   onSelectSubRoute: (index: number) => void;
+  onDeleteRoute: (routeId: string) => void;
 }
 
 export default function SavedRoutesList({
@@ -19,6 +20,7 @@ export default function SavedRoutesList({
   selectedSubRouteIndex,
   onSelectRoute,
   onSelectSubRoute,
+  onDeleteRoute,
 }: SavedRoutesListProps) {
   return (
     <div className="flex h-full w-full flex-col border-r border-slate-200 bg-white lg:w-[400px] dark:border-slate-700 dark:bg-[#102216]">
@@ -43,6 +45,7 @@ export default function SavedRoutesList({
             }
             onSelect={onSelectRoute}
             onSubRouteSelect={onSelectSubRoute}
+            onDelete={onDeleteRoute}
           />
         ))}
       </div>
