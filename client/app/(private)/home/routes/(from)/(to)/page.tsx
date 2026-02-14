@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 
 import { useSearchParams } from "next/navigation";
 
@@ -38,7 +38,7 @@ type MapboxRoute = {
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
-const RoutePage = () => {
+const RouteContent = () => {
   const searchParams = useSearchParams();
   const [source, setSource] = useState<Coordinates | null>(null);
   const [destination, setDestination] = useState<Coordinates | null>(null);
@@ -183,4 +183,21 @@ const RoutePage = () => {
   );
 };
 
-export default RoutePage;
+export default function RoutePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center bg-[#f6f8f6] dark:bg-[#102216]">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#2bee6c] border-t-transparent" />
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+              Loading route parameters...
+            </p>
+          </div>
+        </div>
+      }
+    >
+      <RouteContent />
+    </Suspense>
+  );
+}
