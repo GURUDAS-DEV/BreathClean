@@ -4,7 +4,16 @@ import { useState } from "react";
 
 import { useRouter } from "next/navigation";
 
-import { Activity, Bike, Car, CircleDot, MapPin, User } from "lucide-react";
+import {
+  Activity,
+  Bike,
+  Car,
+  CircleDot,
+  Info,
+  MapPin,
+  Tag,
+  User,
+} from "lucide-react";
 
 type TravelMode = "walking" | "driving" | "cycling";
 
@@ -13,7 +22,8 @@ type RouteDiscoveryPanelProps = {
   destAddress: string;
   selectedMode: TravelMode;
   onModeChange: (mode: TravelMode) => void;
-  onAvoidBusyRoadsChange?: (avoid: boolean) => void;
+  routeName: string;
+  onRouteNameChange: (name: string) => void;
 };
 
 export default function RouteDiscoveryPanel({
@@ -21,18 +31,10 @@ export default function RouteDiscoveryPanel({
   destAddress,
   selectedMode,
   onModeChange,
-  onAvoidBusyRoadsChange,
+  routeName,
+  onRouteNameChange,
 }: RouteDiscoveryPanelProps) {
   const router = useRouter();
-  const [avoidBusyRoads, setAvoidBusyRoads] = useState(false);
-
-  const toggleAvoidBusyRoads = () => {
-    const newState = !avoidBusyRoads;
-    setAvoidBusyRoads(newState);
-    if (onAvoidBusyRoadsChange) {
-      onAvoidBusyRoadsChange(newState);
-    }
-  };
 
   const handleChangeRoute = () => {
     router.push("/home");
@@ -52,9 +54,39 @@ export default function RouteDiscoveryPanel({
 
         <div className="space-y-5 overflow-y-auto p-5">
           {/* From/To Inputs */}
-          <div className="relative space-y-3">
-            {/* Dashed line connecting inputs */}
-            <div className="absolute top-9 bottom-9 left-[19px] w-0.5 border-l border-dashed border-slate-200 dark:border-slate-700"></div>
+          {/* Inputs Section */}
+          <div className="relative space-y-4">
+            {/* Route Name Input */}
+            <div>
+              <div className="mb-1 flex items-center gap-1.5">
+                <label className="text-xs font-bold tracking-wider text-slate-400 uppercase">
+                  Route Name
+                </label>
+                <div className="group relative cursor-help">
+                  <Info
+                    size={12}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                  />
+                  <div className="absolute top-0 right-full mr-2 hidden w-48 -translate-x-2 rounded-lg border border-slate-200 bg-white p-2 text-[10px] text-slate-600 shadow-xl group-hover:block dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                    This name will be used when you save the route to your
+                    favorites.
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 transition-all focus-within:border-[#2bee6c] focus-within:ring-1 focus-within:ring-[#2bee6c]/20 dark:border-slate-700 dark:bg-slate-800">
+                <Tag className="scale-90 text-[#2bee6c]" size={18} />
+                <input
+                  className="w-full border-none bg-transparent p-0 text-sm placeholder:text-slate-400 focus:ring-0 dark:text-white"
+                  placeholder="e.g. Morning Commute"
+                  type="text"
+                  value={routeName}
+                  onChange={(e) => onRouteNameChange(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Dashed line connecting inputs (Adjusted top) */}
+            <div className="absolute top-[92px] bottom-9 left-[19px] w-0.5 border-l border-dashed border-slate-200 dark:border-slate-700"></div>
 
             <div className="relative">
               <label className="mb-1 block text-xs font-bold tracking-wider text-slate-400 uppercase">
@@ -127,34 +159,6 @@ export default function RouteDiscoveryPanel({
               >
                 <User size={18} />
                 <span className="text-[10px] font-bold uppercase">Walk</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Filter Preferences */}
-          <div className="space-y-2">
-            <label className="block text-xs font-bold tracking-wider text-slate-400 uppercase">
-              Preferences
-            </label>
-            <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                Avoid Busy Roads
-              </span>
-              <button
-                role="switch"
-                aria-checked={avoidBusyRoads}
-                onClick={toggleAvoidBusyRoads}
-                className={`relative h-6 w-11 rounded-full transition-colors focus:ring-2 focus:ring-[#2bee6c] focus:ring-offset-2 focus:outline-none dark:focus:ring-offset-slate-900 ${
-                  avoidBusyRoads
-                    ? "bg-[#2bee6c]"
-                    : "bg-slate-300 dark:bg-slate-600"
-                }`}
-              >
-                <span
-                  className={`absolute top-1 left-1 h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
-                    avoidBusyRoads ? "translate-x-5" : "translate-x-0"
-                  }`}
-                />
               </button>
             </div>
           </div>

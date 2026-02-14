@@ -113,6 +113,11 @@ const routeOptionSchema = new Schema<IRouteOption>(
       type: Date,
       default: null,
     },
+    travelMode: {
+      type: String,
+      enum: ["walking", "cycling", "driving"],
+      required: true,
+    },
   },
   { _id: false }
 );

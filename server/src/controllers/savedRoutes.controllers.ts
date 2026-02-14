@@ -27,7 +27,6 @@ export const fetchSavedRoutes = async (
 export const saveRoute = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.userId;
-
     const { name, from, to, routes, isFavorite } = req.body;
 
     if (!from || !to || !routes || routes.length === 0) {

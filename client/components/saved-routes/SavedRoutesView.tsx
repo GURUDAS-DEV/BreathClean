@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 
+import { useRouter } from "next/navigation";
+
+import { toast } from "sonner";
+
 import EmptyState from "./EmptyState";
 import RouteInsightsPanel from "./RouteInsightsPanel";
 import RouteMap from "./RouteMap";
@@ -12,15 +16,57 @@ interface SavedRoutesViewProps {
   routes: ISavedRoute[];
 }
 
-export default function SavedRoutesView({ routes }: SavedRoutesViewProps) {
+export default function SavedRoutesView({
+  routes: initialRoutes,
+}: SavedRoutesViewProps) {
+  const router = useRouter();
+  const [routes, setRoutes] = useState<ISavedRoute[]>(initialRoutes);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(
-    routes.length > 0 ? routes[0]._id : null
+    initialRoutes.length > 0 ? initialRoutes[0]._id : null
   );
   const [selectedSubRouteIndex, setSelectedSubRouteIndex] = useState(0);
 
   const handleSelectRoute = (routeId: string) => {
     setSelectedRouteId(routeId);
     setSelectedSubRouteIndex(0);
+  };
+
+  const handleDeleteRoute = async (routeId: string) => {
+    // Optimistic update
+    const previousRoutes = [...routes];
+    setRoutes((prev) => prev.filter((r) => r._id !== routeId));
+
+    // If the deleted route was selected, select the first available one
+    if (selectedRouteId === routeId) {
+      const remaining = routes.filter((r) => r._id !== routeId);
+      setSelectedRouteId(remaining.length > 0 ? remaining[0]._id : null);
+    }
+
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/saved-routes/${routeId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to delete route");
+      }
+
+      toast.success("Route deleted successfully");
+      router.refresh(); // Sync with server
+    } catch (error) {
+      console.error("Delete route error:", error);
+      toast.error("Failed to delete route");
+      // Revert optimistic update
+      setRoutes(previousRoutes);
+      if (selectedRouteId === routeId) setSelectedRouteId(routeId);
+    }
   };
 
   const selectedRoute = routes.find((r) => r._id === selectedRouteId) ?? null;
@@ -39,6 +85,7 @@ export default function SavedRoutesView({ routes }: SavedRoutesViewProps) {
               selectedSubRouteIndex={selectedSubRouteIndex}
               onSelectRoute={handleSelectRoute}
               onSelectSubRoute={setSelectedSubRouteIndex}
+              onDeleteRoute={handleDeleteRoute}
             />
 
             {/* Center - map */}
@@ -56,6 +103,7 @@ export default function SavedRoutesView({ routes }: SavedRoutesViewProps) {
                 <RouteInsightsPanel
                   route={selectedRoute}
                   subRouteIndex={selectedSubRouteIndex}
+                  onDelete={handleDeleteRoute}
                 />
               </div>
             )}

@@ -4,6 +4,9 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 
 import { useSearchParams } from "next/navigation";
 
+import { Bookmark } from "lucide-react";
+import { toast } from "sonner";
+
 import InsightToast from "@/components/routes/InsightToast";
 import MapControls from "@/components/routes/MapControls";
 import RouteComparisonPanel from "@/components/routes/RouteComparisonPanel";
@@ -42,7 +45,8 @@ type MapboxRoute = {
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
 if (!MAPBOX_TOKEN) {
-  const warning = `BreathClean Dev Warning: MAPBOX_TOKEN is empty (value: "${MAPBOX_TOKEN}"). Mapbox API calls will fail.`;
+  const warning =
+    "BreathClean Dev Warning: MAPBOX_TOKEN is empty. Mapbox API calls will fail.";
   if (process.env.NODE_ENV !== "production") {
     console.warn(warning);
   }
@@ -59,6 +63,7 @@ const RouteContent = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
+  const [routeName, setRouteName] = useState("");
 
   // Parse query parameters
   useEffect(() => {
@@ -88,9 +93,7 @@ const RouteContent = () => {
   // Reverse geocode to get address from coordinates
   const reverseGeocode = async (lng: number, lat: number): Promise<string> => {
     if (!MAPBOX_TOKEN) {
-      console.error(
-        `Aborting reverseGeocode: MAPBOX_TOKEN is missing (value: "${MAPBOX_TOKEN}").`
-      );
+      console.error("Aborting reverseGeocode: MAPBOX_TOKEN is missing.");
       return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
 
@@ -100,11 +103,10 @@ const RouteContent = () => {
       );
 
       if (!response.ok) {
-        const errorText = await response.text();
-        const errorMsg = `Geocoding API Error: ${response.status} ${response.statusText}`;
-        console.error(`${errorMsg} | Body: ${errorText}`);
-        // Return clear error string to caller instead of fallback coordinates
-        return `${errorMsg}`;
+        const errorBody = await response.text();
+        throw new Error(
+          `Geocoding HTTP error: ${response.status} ${response.statusText} | Body: ${errorBody}`
+        );
       }
 
       const data = await response.json();
@@ -113,8 +115,9 @@ const RouteContent = () => {
       }
       return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     } catch (error) {
-      // Network/Runtime errors: Log and return fallback coordinates
-      console.error("Geocoding network/runtime error:", error);
+      // Only swallow network/runtime errors so we return coordinates as fallback
+      // ideally we might want to surface this, but the UI expects a string
+      console.error("Geocoding failed:", error);
       return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
   };
@@ -125,9 +128,7 @@ const RouteContent = () => {
       if (!source || !destination) return;
       if (!MAPBOX_TOKEN) {
         setError("Mapbox configuration error: Missing Token");
-        console.error(
-          `Aborting fetchRoutes: MAPBOX_TOKEN is missing (value: "${MAPBOX_TOKEN}").`
-        );
+        console.error("Aborting fetchRoutes: MAPBOX_TOKEN is missing.");
         return;
       }
 
@@ -143,20 +144,11 @@ const RouteContent = () => {
 
         const response = await fetch(url);
 
-        // Check for HTTP errors before parsing JSON
         if (!response.ok) {
-          let errorDetails = response.statusText;
-          try {
-            const errorClone = response.clone();
-            const errorJson = await errorClone.json();
-            errorDetails = JSON.stringify(errorJson);
-          } catch {
-            errorDetails = await response.text();
-          }
-
+          const errorText = await response.text();
           console.error(
             `FetchRoutes HTTP error: ${response.status} ${response.statusText}`,
-            errorDetails
+            errorText
           );
           setError(
             `Route fetch failed: ${response.status} ${response.statusText}`
@@ -230,13 +222,74 @@ const RouteContent = () => {
     setSelectedRouteIndex(index);
   };
 
+  // Save route function
+  const saveRoute = async () => {
+    if (!source || !destination || routes.length === 0) return;
+
+    const nameToSave = routeName.trim() || "Best Route";
+
+    try {
+      const payload = {
+        name: nameToSave,
+        from: {
+          address: sourceAddress,
+          location: {
+            type: "Point",
+            coordinates: [source.lng, source.lat],
+          },
+        },
+        to: {
+          address: destAddress,
+          location: {
+            type: "Point",
+            coordinates: [destination.lng, destination.lat],
+          },
+        },
+        routes: [
+          {
+            distance: routes[selectedRouteIndex].distance,
+            duration: routes[selectedRouteIndex].duration,
+            routeGeometry: routes[selectedRouteIndex].geometry,
+            lastComputedScore:
+              routes[selectedRouteIndex].aqiScore ||
+              Math.floor(Math.random() * 100),
+            lastComputedAt: new Date(),
+            travelMode: selectedMode,
+          },
+        ],
+        isFavorite: false,
+      };
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/saved-routes`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const data = await response.json();
+      console.log("Save route response:", data);
+
+      if (!response.ok) {
+        console.error("Save route failed:", data);
+        toast.error(data.message || "Failed to save route");
+        return;
+      }
+
+      toast.success("Route saved successfully!");
+    } catch (error) {
+      console.error("Save route error:", error);
+      toast.error("An error occurred while saving the route");
+    }
+  };
+
   return (
     <div className="font-display flex h-screen flex-col overflow-hidden bg-[#f6f8f6] text-slate-900 dark:bg-[#102216]">
-      {!MAPBOX_TOKEN && process.env.NODE_ENV !== "production" && (
-        <div className="absolute top-20 left-1/2 z-[100] -translate-x-1/2 animate-bounce rounded-full bg-red-600 px-6 py-2 text-sm font-bold text-white shadow-xl">
-          DEV WARNING: MAPBOX_TOKEN is missing!
-        </div>
-      )}
       <main className="relative mt-12 flex-1 overflow-hidden">
         <RouteMapBackground
           source={source}
@@ -249,6 +302,8 @@ const RouteContent = () => {
           destAddress={destAddress}
           selectedMode={selectedMode}
           onModeChange={handleModeChange}
+          routeName={routeName}
+          onRouteNameChange={setRouteName}
         />
         <RouteComparisonPanel
           routes={routes}
@@ -258,12 +313,21 @@ const RouteContent = () => {
           selectedRouteIndex={selectedRouteIndex}
           onRouteSelect={handleRouteSelect}
         />
-        {!isLoading && !error && routes.length > 0 && (
-          <InsightToast
-            pm25Reduction={routes[selectedRouteIndex]?.pollutionReductionPct}
-          />
-        )}
+        <InsightToast />
         <MapControls />
+
+        {/* Save Route Button - Bottom Right */}
+        {!isLoading && !error && routes.length > 0 && (
+          <button
+            onClick={saveRoute}
+            className="absolute right-6 bottom-10 z-40 flex items-center gap-3 rounded-xl bg-white px-6 py-3.5 font-bold text-slate-800 shadow-2xl transition-all hover:scale-105 hover:bg-slate-50 active:scale-95 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
+          >
+            <div className="flex size-8 items-center justify-center rounded-full bg-[#2bee6c]/10 text-[#2bee6c]">
+              <Bookmark className="size-4" />
+            </div>
+            <span>Save Route</span>
+          </button>
+        )}
       </main>
     </div>
   );
