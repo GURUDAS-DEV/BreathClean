@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { SearchBox } from "@mapbox/search-js-react";
 import {
   ArrowRight,
   Crosshair,
@@ -54,6 +55,13 @@ export default function HomeMap({ className }: HomeMapProps) {
   const [isGettingCurrentLocation, setIsGettingCurrentLocation] = useState<
     "source" | "dest" | null
   >(null);
+
+  // Search Box Queries
+  const [sourceQuery, setSourceQuery] = useState("");
+  const [destQuery, setDestQuery] = useState("");
+
+  // Sync queries with locations (removed useEffects to avoid lint errors/loops)
+  // We will manually sync state when setting locations.
 
   const mapStatusLabel = useMemo(() => {
     if (mapStatus === "no-token") return "Mapbox token missing";
@@ -117,9 +125,11 @@ export default function HomeMap({ className }: HomeMapProps) {
 
         if (type === "source") {
           setSourceLocation({ lng: longitude, lat: latitude, address });
+          setSourceQuery(address);
           updateMarker("source", longitude, latitude);
         } else {
           setDestLocation({ lng: longitude, lat: latitude, address });
+          setDestQuery(address);
           updateMarker("dest", longitude, latitude);
         }
 
@@ -206,6 +216,7 @@ export default function HomeMap({ className }: HomeMapProps) {
           if (isCancelled) return;
 
           setSourceLocation({ lng: longitude, lat: latitude, address });
+          setSourceQuery(address);
           updateMarker("source", longitude, latitude);
 
           map.once("moveend", () => {
@@ -243,7 +254,6 @@ export default function HomeMap({ className }: HomeMapProps) {
       map.off("moveend", scheduleShowRightModal);
       map.off("load", handleMapLoad);
       map.off("error", handleMapError);
-      if (revealTimeoutRef.current) clearTimeout(revealTimeoutRef.current);
 
       // Safe Cleanup
       const markers = markersRef.current;
@@ -270,9 +280,11 @@ export default function HomeMap({ className }: HomeMapProps) {
 
       if (pickingMode === "source") {
         setSourceLocation({ lng, lat, address });
+        setSourceQuery(address);
         updateMarker("source", lng, lat);
       } else {
         setDestLocation({ lng, lat, address });
+        setDestQuery(address);
         updateMarker("dest", lng, lat);
       }
 
@@ -387,12 +399,44 @@ export default function HomeMap({ className }: HomeMapProps) {
                 <div className="relative space-y-1">
                   <div className="group relative">
                     <div className="absolute top-1/2 left-3.5 z-10 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-2 border-[#2bee6c] bg-white" />
-                    <input
-                      className="w-full rounded-lg border-transparent bg-slate-50 py-3 pr-3 pl-10 text-sm transition-all outline-none placeholder:text-slate-400 focus:border-[#2bee6c] focus:ring-0 dark:bg-slate-800/50"
+                    <SearchBox
+                      accessToken={mapboxToken}
+                      value={sourceQuery}
+                      onChange={(val: string) => setSourceQuery(val)}
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      onRetrieve={(res: any) => {
+                        const feature = res.features[0];
+                        const [lng, lat] = feature.geometry.coordinates;
+                        const address =
+                          feature.properties?.place_name ||
+                          feature.properties?.full_address ||
+                          feature.place_name ||
+                          sourceQuery;
+                        setSourceLocation({
+                          lng,
+                          lat,
+                          address,
+                        });
+                        setSourceQuery(address);
+                        updateMarker("source", lng, lat);
+                        mapRef.current?.flyTo({
+                          center: [lng, lat],
+                          zoom: 14,
+                        });
+                      }}
                       placeholder="Current location..."
-                      type="text"
-                      value={sourceLocation?.address || ""}
-                      readOnly // Let's make it read-only for now if we rely on map picking/geo
+                      options={{ language: "en", limit: 5 }}
+                      theme={{
+                        variables: {
+                          fontFamily: "inherit",
+                          padding: "12px 48px 12px 42px",
+                          borderRadius: "8px",
+                          boxShadow: "none",
+                        },
+                        icons: {
+                          search: '<svg viewBox="0 0 1 1"></svg>',
+                        },
+                      }}
                     />
                     {/* Navigation/Current Location Button */}
                     <button
@@ -422,12 +466,44 @@ export default function HomeMap({ className }: HomeMapProps) {
                     <div className="absolute top-1/2 left-3.5 z-10 flex -translate-y-1/2 items-center justify-center">
                       <MapPin className="h-4 w-4 text-[#2bee6c]" />
                     </div>
-                    <input
-                      className="w-full rounded-lg border-transparent bg-slate-50 py-3 pr-3 pl-10 text-sm transition-all outline-none placeholder:text-slate-400 focus:border-[#2bee6c] focus:ring-0 dark:bg-slate-800/50"
+                    <SearchBox
+                      accessToken={mapboxToken}
+                      value={destQuery}
+                      onChange={(val: string) => setDestQuery(val)}
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      onRetrieve={(res: any) => {
+                        const feature = res.features[0];
+                        const [lng, lat] = feature.geometry.coordinates;
+                        const address =
+                          feature.properties?.place_name ||
+                          feature.properties?.full_address ||
+                          feature.place_name ||
+                          destQuery;
+                        setDestLocation({
+                          lng,
+                          lat,
+                          address,
+                        });
+                        setDestQuery(address);
+                        updateMarker("dest", lng, lat);
+                        mapRef.current?.flyTo({
+                          center: [lng, lat],
+                          zoom: 14,
+                        });
+                      }}
                       placeholder="Search destination..."
-                      type="text"
-                      value={destLocation?.address || ""}
-                      readOnly
+                      options={{ language: "en", limit: 5 }}
+                      theme={{
+                        variables: {
+                          fontFamily: "inherit",
+                          padding: "12px 48px 12px 42px",
+                          borderRadius: "8px",
+                          boxShadow: "none",
+                        },
+                        icons: {
+                          search: '<svg viewBox="0 0 1 1"></svg>',
+                        },
+                      }}
                     />
                     {/* Navigation/Current Location Button for Dest */}
                     <button
