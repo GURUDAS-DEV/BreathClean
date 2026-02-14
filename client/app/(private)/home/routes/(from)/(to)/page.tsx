@@ -1,0 +1,186 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+
+import { useSearchParams } from "next/navigation";
+
+import InsightToast from "@/components/routes/InsightToast";
+import MapControls from "@/components/routes/MapControls";
+import RouteComparisonPanel from "@/components/routes/RouteComparisonPanel";
+import RouteDiscoveryPanel from "@/components/routes/RouteDiscoveryPanel";
+import RouteMapBackground from "@/components/routes/RouteMapBackground";
+
+// Types
+type Coordinates = {
+  lng: number;
+  lat: number;
+};
+
+type RouteData = {
+  distance: number; // in meters
+  duration: number; // in seconds
+  geometry: {
+    coordinates: [number, number][];
+    type: string;
+  };
+};
+
+type TravelMode = "walking" | "driving" | "cycling";
+
+type MapboxRoute = {
+  distance: number;
+  duration: number;
+  geometry: {
+    coordinates: [number, number][];
+    type: string;
+  };
+};
+
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
+
+const RoutePage = () => {
+  const searchParams = useSearchParams();
+  const [source, setSource] = useState<Coordinates | null>(null);
+  const [destination, setDestination] = useState<Coordinates | null>(null);
+  const [sourceAddress, setSourceAddress] = useState<string>("");
+  const [destAddress, setDestAddress] = useState<string>("");
+  const [selectedMode, setSelectedMode] = useState<TravelMode>("driving");
+  const [routes, setRoutes] = useState<RouteData[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
+
+  // Parse query parameters
+  useEffect(() => {
+    const fromParam = searchParams.get("from");
+    const toParam = searchParams.get("to");
+
+    if (fromParam && toParam) {
+      const [fromLng, fromLat] = fromParam.split(",").map(Number);
+      const [toLng, toLat] = toParam.split(",").map(Number);
+
+      if (
+        !isNaN(fromLng) &&
+        !isNaN(fromLat) &&
+        !isNaN(toLng) &&
+        !isNaN(toLat)
+      ) {
+        setSource({ lng: fromLng, lat: fromLat });
+        setDestination({ lng: toLng, lat: toLat });
+
+        // Fetch addresses for source and destination
+        reverseGeocode(fromLng, fromLat).then(setSourceAddress);
+        reverseGeocode(toLng, toLat).then(setDestAddress);
+      }
+    }
+  }, [searchParams]);
+
+  // Reverse geocode to get address from coordinates
+  const reverseGeocode = async (lng: number, lat: number): Promise<string> => {
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}`
+      );
+      const data = await response.json();
+      if (data.features && data.features.length > 0) {
+        return data.features[0].place_name;
+      }
+      return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    } catch (error) {
+      console.error("Geocoding failed:", error);
+      return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    }
+  };
+
+  // Fetch routes from Mapbox Directions API
+  const fetchRoutes = useCallback(
+    async (mode: TravelMode) => {
+      if (!source || !destination) return;
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const profile = `mapbox/${mode}`;
+        const coordinates = `${source.lng},${source.lat};${destination.lng},${destination.lat}`;
+
+        // Request multiple alternative routes
+        const url = `https://api.mapbox.com/directions/v5/${profile}/${coordinates}?alternatives=true&geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.code === "Ok" && data.routes && data.routes.length > 0) {
+          // Take up to 3 routes
+          const fetchedRoutes = data.routes
+            .slice(0, 3)
+            .map((route: MapboxRoute) => ({
+              distance: route.distance,
+              duration: route.duration,
+              geometry: route.geometry,
+            }));
+          setRoutes(fetchedRoutes);
+        } else {
+          setError("No routes found. Please try different locations.");
+          setRoutes([]);
+        }
+      } catch (err) {
+        console.error("Error fetching routes:", err);
+        setError("Failed to fetch routes. Please try again.");
+        setRoutes([]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [source, destination]
+  );
+
+  // Fetch routes when source, destination, or mode changes
+  useEffect(() => {
+    if (source && destination) {
+      fetchRoutes(selectedMode);
+    }
+  }, [source, destination, selectedMode, fetchRoutes]);
+
+  // Handle mode toggle
+  const handleModeChange = (mode: TravelMode) => {
+    setSelectedMode(mode);
+    setSelectedRouteIndex(0); // Reset to first route when mode changes
+  };
+
+  // Handle route selection
+  const handleRouteSelect = (index: number) => {
+    setSelectedRouteIndex(index);
+  };
+
+  return (
+    <div className="font-display flex h-screen flex-col overflow-hidden bg-[#f6f8f6] text-slate-900 dark:bg-[#102216]">
+      <main className="relative mt-12 flex-1 overflow-hidden">
+        <RouteMapBackground
+          source={source}
+          destination={destination}
+          routes={routes}
+          selectedRouteIndex={selectedRouteIndex}
+        />
+        <RouteDiscoveryPanel
+          sourceAddress={sourceAddress}
+          destAddress={destAddress}
+          selectedMode={selectedMode}
+          onModeChange={handleModeChange}
+        />
+        <RouteComparisonPanel
+          routes={routes}
+          isLoading={isLoading}
+          error={error}
+          selectedMode={selectedMode}
+          selectedRouteIndex={selectedRouteIndex}
+          onRouteSelect={handleRouteSelect}
+        />
+        <InsightToast />
+        <MapControls />
+      </main>
+    </div>
+  );
+};
+
+export default RoutePage;

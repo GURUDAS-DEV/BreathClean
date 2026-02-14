@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 
 import {
   ArrowRight,
@@ -31,6 +32,7 @@ type LocationData = {
 };
 
 export default function HomeMap({ className }: HomeMapProps) {
+  const router = useRouter();
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -116,6 +118,30 @@ export default function HomeMap({ className }: HomeMapProps) {
       .addTo(map);
 
     markersRef.current[type] = marker;
+  };
+
+  const handleFindRoute = () => {
+    if (!sourceLocation) {
+      console.log("Please select a starting location.");
+      return;
+    }
+    if (!destLocation) {
+      console.log("Please select a destination.");
+      return;
+    }
+
+    if (
+      sourceLocation.lng === destLocation.lng &&
+      sourceLocation.lat === destLocation.lat
+    ) {
+      console.log("Start and destination cannot be the same.");
+      return;
+    }
+
+    const from = `${sourceLocation.lng},${sourceLocation.lat}`;
+    const to = `${destLocation.lng},${destLocation.lat}`;
+
+    router.push(`/home/routes?from=${from}&to=${to}`);
   };
 
   // Helper: Use Current Location for specific input
@@ -582,6 +608,7 @@ export default function HomeMap({ className }: HomeMapProps) {
 
               <div className="mt-6">
                 <button
+                  onClick={handleFindRoute}
                   disabled={!sourceLocation || !destLocation}
                   className="group flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#2bee6c] px-5 py-3 text-sm font-bold text-[#102216] shadow-lg shadow-[#2bee6c]/20 transition-all hover:bg-[#2bee6c]/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >

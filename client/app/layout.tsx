@@ -3,6 +3,8 @@ import { Outfit } from "next/font/google";
 
 import "./globals.css";
 
+// import { Toaster } from "@/components/ui/sonner";
+
 const outfit = Outfit({
   variable: "--font-outfit",
   subsets: ["latin"],
@@ -49,6 +51,7 @@ export default function RootLayout({
     <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <body className={`${outfit.variable} font-outfit antialiased`}>
         {children}
+        {/* <Toaster position="top-center" richColors /> */}
       </body>
     </html>
   );
