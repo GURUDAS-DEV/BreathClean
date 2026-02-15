@@ -7,6 +7,7 @@ interface SavedRouteLinkProps {
 }
 
 export default function SavedRouteLink({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   routeId: _routeId,
 }: SavedRouteLinkProps) {
   // This could handle navigation or tracking in the future
