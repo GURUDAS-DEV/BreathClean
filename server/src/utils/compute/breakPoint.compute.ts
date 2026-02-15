@@ -63,9 +63,13 @@ function areCoordinatesEqual(
 function extractBreakpoints(
   coordinates: [number, number][],
   count: number,
-  usedCoordinates: Coordinate[]
+  usedCoordinates: Coordinate[],
+  routeLabel: string = "unknown"
 ): Coordinate[] {
   const totalCoords = coordinates.length;
+  if (totalCoords < 2) {
+    return []; // Should be caught by computeBreakpoints validation
+  }
   const breakpoints: Coordinate[] = [];
 
   // Calculate evenly spaced indices, avoiding start (0) and end (totalCoords-1)
@@ -128,10 +132,11 @@ function extractBreakpoints(
         offset++;
       }
 
-      // If still not found after trying nearby indices, use the original
+      // If still not found after trying nearby indices, skip this point to guarantee uniqueness
       if (!found) {
-        breakpoints.push(coordinate);
-        usedCoordinates.push(coordinate);
+        console.warn(
+          `[Route ${routeLabel}] Skipping duplicate breakpoint at index ${safeIndex} (${coordinate.lat}, ${coordinate.lon}) because no unique alternative was found nearby.`
+        );
       }
     }
   }
@@ -177,6 +182,12 @@ export function computeBreakpoints(routes: RouteInput[]): RouteBreakpoints[] {
       throw new Error("Invalid route geometry");
     }
 
+    if (routeGeometry.coordinates.length < 2) {
+      throw new Error(
+        "Insufficient coordinates in route geometry (minimum 2 required)"
+      );
+    }
+
     // Calculate how many breakpoints we need for this route
     const breakpointCount = calculateBreakpointCount(distance);
 
@@ -184,7 +195,8 @@ export function computeBreakpoints(routes: RouteInput[]): RouteBreakpoints[] {
     const breakpoints = extractBreakpoints(
       routeGeometry.coordinates,
       breakpointCount,
-      usedCoordinates
+      usedCoordinates,
+      result.length.toString()
     );
 
     // Build the route breakpoints object

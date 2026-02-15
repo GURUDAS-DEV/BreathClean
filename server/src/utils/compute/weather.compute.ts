@@ -63,9 +63,13 @@ async function fetchWeatherForPoint(
   lat: number,
   lon: number
 ): Promise<WeatherMain | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+
   try {
     const response = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${process.env.WEATHER_API_KEY}&units=metric`
+      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${process.env.WEATHER_API_KEY}&units=metric`,
+      { signal: controller.signal }
     );
 
     if (!response.ok) {
@@ -84,9 +88,15 @@ async function fetchWeatherForPoint(
 
     console.error(`No main weather data for (${lat}, ${lon})`);
     return null;
-  } catch (error) {
-    console.error(`Failed to fetch weather for (${lat}, ${lon}):`, error);
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "AbortError") {
+      console.error(`Weather API timeout for (${lat}, ${lon})`);
+    } else {
+      console.error(`Failed to fetch weather for (${lat}, ${lon}):`, error);
+    }
     return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -95,30 +105,6 @@ async function fetchWeatherForPoint(
  *
  * @param routes - Array of route objects, each containing point_1, point_2, point_3, etc.
  * @returns Array of weather results for each route, with only main weather data
- *
- * @example
- * const routes = [
- *   { point_1: { lat: 28.7041, lon: 77.1025 }, point_2: { lat: 28.5355, lon: 77.3910 } },
- *   { point_1: { lat: 28.6139, lon: 77.2090 } }
- * ];
- * const weatherData = await computeWeather(routes);
- *
- * // Returns:
- * [
- *   {
- *     routeIndex: 0,
- *     points: [
- *       {
- *         point: "point_1",
- *         coordinate: { lat: 28.7041, lon: 77.1025 },
- *         main: { temp: 25, feels_like: 24, temp_min: 23, temp_max: 27, pressure: 1013, humidity: 60 }
- *       },
- *       ...
- *     ],
- *     totalPoints: 2,
- *     successfulFetches: 2
- *   }
- * ]
  */
 export async function computeWeather(
   routes: RoutePoints[]
@@ -132,37 +118,67 @@ export async function computeWeather(
       throw new Error("WEATHER_API_KEY not configured");
     }
 
-    // Collect all weather fetch promises for parallel execution
-    const routePromises = routes.map(async (route, routeIndex) => {
-      const pointPromises: Promise<PointWeatherResult>[] = [];
+    // Task definition for batching
+    interface PointTask {
+      routeIndex: number;
+      pointKey: string;
+      point: Coordinate;
+    }
 
-      // Iterate through all possible points (point_1 to point_7)
+    // Step 1: Collect ALL points that need weather data from ALL routes
+    const allPointTasks: PointTask[] = [];
+    routes.forEach((route, routeIndex) => {
       for (let i = 1; i <= 7; i++) {
         const pointKey = `point_${i}` as keyof RoutePoints;
         const point = route[pointKey];
-
         if (point && point.lat !== undefined && point.lon !== undefined) {
-          // Create a promise for each point's weather data
-          const pointPromise = fetchWeatherForPoint(point.lat, point.lon).then(
-            (mainWeatherData): PointWeatherResult => {
-              const result: PointWeatherResult = {
-                point: pointKey,
-                coordinate: point,
-                main: mainWeatherData,
-              };
-              if (mainWeatherData === null) {
-                result.error = "Failed to fetch weather";
-              }
-              return result;
-            }
-          );
-          pointPromises.push(pointPromise);
+          allPointTasks.push({ routeIndex, pointKey, point });
         }
       }
+    });
 
-      // Wait for all points in this route to complete
-      const pointResults = await Promise.all(pointPromises);
+    // Step 2: Execute fetches in batches (Concurrency Limiter)
+    // No more than N requests in parallel to avoid quota/resource issues
+    const pointResultsMap = new Map<number, PointWeatherResult[]>();
+    const CONCURRENCY_LIMIT = 5;
 
+    for (let i = 0; i < allPointTasks.length; i += CONCURRENCY_LIMIT) {
+      const batch = allPointTasks.slice(i, i + CONCURRENCY_LIMIT);
+
+      // Execute this batch in parallel
+      const batchResults = await Promise.all(
+        batch.map(async (task) => {
+          const mainWeatherData = await fetchWeatherForPoint(
+            task.point.lat,
+            task.point.lon
+          );
+
+          const result: PointWeatherResult = {
+            point: task.pointKey,
+            coordinate: task.point,
+            main: mainWeatherData,
+          };
+
+          if (mainWeatherData === null) {
+            result.error = "Failed to fetch weather (timeout or API error)";
+          }
+
+          return { routeIndex: task.routeIndex, result };
+        })
+      );
+
+      // Store results in the map grouped by routeIndex
+      batchResults.forEach(({ routeIndex, result }) => {
+        if (!pointResultsMap.has(routeIndex)) {
+          pointResultsMap.set(routeIndex, []);
+        }
+        pointResultsMap.get(routeIndex)!.push(result);
+      });
+    }
+
+    // Step 3: Format the results back to the expected RouteWeatherResult[] structure
+    const results: RouteWeatherResult[] = routes.map((_, routeIndex) => {
+      const pointResults = pointResultsMap.get(routeIndex) || [];
       return {
         routeIndex,
         points: pointResults,
@@ -171,14 +187,11 @@ export async function computeWeather(
       };
     });
 
-    // Execute all route fetches in parallel
-    const results = await Promise.all(routePromises);
-
     console.log(
       `Weather computation complete: ${results.length} routes, ${results.reduce(
         (sum, r) => sum + r.totalPoints,
         0
-      )} total points`
+      )} total points (Batched Concurrency Limit: ${CONCURRENCY_LIMIT})`
     );
 
     return results;

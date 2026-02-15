@@ -171,8 +171,8 @@ export const getScoreController = async (req: Request, res: Response) => {
       const route = routes[i];
       if (
         !route ||
-        !route.distance ||
-        !route.duration ||
+        route.distance == null ||
+        route.duration == null ||
         !route.routeGeometry
       ) {
         res.status(400).json({
@@ -272,7 +272,6 @@ export const getScoreController = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Failed to compute route scores",
-      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
