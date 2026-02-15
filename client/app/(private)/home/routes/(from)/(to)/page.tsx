@@ -30,6 +30,11 @@ type RouteData = {
   };
   overallScore?: number;
   weatherScore?: number;
+  aqiScore?: {
+    aqi: number; // Raw AQI value
+    score: number; // 0-100 score
+    category: string; // Good, Moderate, Unhealthy, etc.
+  };
   trafficScore?: number;
   pollutionReductionPct?: number;
   exposureWarning?: string;
@@ -171,10 +176,12 @@ const RouteContent = () => {
           (sr: {
             overallScore: number;
             weatherScore: { overall: number };
+            aqiScore: { aqi: number; score: number; category: string };
             trafficScore: number;
           }) => ({
             overall: sr.overallScore,
             weather: sr.weatherScore?.overall,
+            aqi: sr.aqiScore,
             traffic: sr.trafficScore,
           })
         );
@@ -212,6 +219,7 @@ const RouteContent = () => {
               ...route,
               overallScore: score,
               weatherScore: s?.weather,
+              aqiScore: s?.aqi,
               trafficScore: s?.traffic,
               pollutionReductionPct: reductionPct,
               exposureWarning: warning,
@@ -259,13 +267,29 @@ const RouteContent = () => {
 
         if (!baseResponse.ok) {
           const errorText = await baseResponse.text();
+          let errorMessage = `Route fetch failed: ${baseResponse.status} ${baseResponse.statusText}`;
+
+          try {
+            const errorJson = JSON.parse(errorText);
+            if (
+              errorJson.message ===
+                "Route exceeds maximum distance limitation" ||
+              errorJson.code === "InvalidInput"
+            ) {
+              errorMessage =
+                "Route is too long for detailed analysis. Please try a shorter trip (under 1000km).";
+            } else if (errorJson.message) {
+              errorMessage = errorJson.message;
+            }
+          } catch (e) {
+            // ignore JSON parse error
+          }
+
           console.error(
             `FetchRoutes HTTP error: ${baseResponse.status} ${baseResponse.statusText}`,
             errorText
           );
-          setError(
-            `Route fetch failed: ${baseResponse.status} ${baseResponse.statusText}`
-          );
+          setError(errorMessage);
           setRoutes([]);
           return;
         }

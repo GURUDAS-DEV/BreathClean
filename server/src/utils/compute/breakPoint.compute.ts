@@ -28,18 +28,18 @@ interface RouteBreakpoints {
 /**
  * Calculate the number of breakpoints based on route distance
  * - Under 100 km: 3 points
- * - 100-500 km: 4-5 points
- * - Above 500 km: 6-7 points
+ * - 100-500 km: 3-4 points
+ * - Above 500 km: 3-4 points (reduced to prevent API timeouts)
  */
 function calculateBreakpointCount(distance: number): number {
   if (distance < 100) {
     return 3;
   } else if (distance >= 100 && distance <= 500) {
-    // Scale between 4-5 based on distance
-    return distance < 300 ? 4 : 5;
+    // Scale between 3-4 based on distance
+    return distance < 300 ? 3 : 4;
   } else {
-    // Scale between 6-7 based on distance
-    return distance < 750 ? 6 : 7;
+    // For very long routes, use 3-4 points to prevent timeouts
+    return distance < 750 ? 3 : 4;
   }
 }
 
