@@ -37,6 +37,40 @@ type RouteComparisonPanelProps = {
   onRouteSelect: (index: number) => void;
 };
 
+const getCategoryColor = (category: string): string => {
+  const baseClasses = "rounded-full px-2 py-0.5 text-[10px] font-bold";
+
+  if (category === "Excellent") {
+    return `${baseClasses} bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400`;
+  }
+
+  if (category === "Good") {
+    return `${baseClasses} bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400`;
+  }
+
+  if (category === "Moderate") {
+    return `${baseClasses} bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400`;
+  }
+
+  if (category.includes("Sensitive")) {
+    return `${baseClasses} bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400`;
+  }
+
+  if (category === "Unhealthy") {
+    return `${baseClasses} bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400`;
+  }
+
+  if (category === "Very Unhealthy") {
+    return `${baseClasses} bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400`;
+  }
+
+  if (category === "Hazardous") {
+    return `${baseClasses} bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400`;
+  }
+
+  return `${baseClasses} bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400`;
+};
+
 export default function RouteComparisonPanel({
   routes,
   isLoading,
@@ -262,19 +296,7 @@ export default function RouteComparisonPanel({
                   </div>
                   <div className="flex items-center gap-2">
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                        route.aqiScore.category === "Good"
-                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                          : route.aqiScore.category === "Moderate"
-                            ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                            : route.aqiScore.category.includes("Sensitive")
-                              ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
-                              : route.aqiScore.category === "Unhealthy"
-                                ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                                : route.aqiScore.category === "Very Unhealthy"
-                                  ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                                  : "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400"
-                      }`}
+                      className={`${getCategoryColor(route.aqiScore.category)}`}
                     >
                       {route.aqiScore.category}
                     </span>

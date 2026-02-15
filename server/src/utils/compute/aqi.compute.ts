@@ -1,19 +1,7 @@
+import type { Coordinate, RoutePoints } from "./weather.compute.js";
+
 //
 // Type definitions for AQI data
-export interface Coordinate {
-  lat: number;
-  lon: number;
-}
-
-export interface RoutePoints {
-  point_1?: Coordinate;
-  point_2?: Coordinate;
-  point_3?: Coordinate;
-  point_4?: Coordinate;
-  point_5?: Coordinate;
-  point_6?: Coordinate;
-  point_7?: Coordinate;
-}
 
 // AQI data structure based on AQICN API response
 export interface AQIData {

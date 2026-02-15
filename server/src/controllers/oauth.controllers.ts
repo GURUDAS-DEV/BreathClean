@@ -45,9 +45,9 @@ export const googleCallback = async (req: Request, res: Response) => {
     }
     res.cookie("refreshToken", response.tokens.refreshToken, {
       httpOnly: true,
-      secure: false, // ❌ HTTPS only → MUST be false on localhost
-      sameSite: "lax", // ✅ works for same-site localhost
-      // ❌ NO domain on localhost
+      secure: true,
+      sameSite: "lax",
+      domain: ".daemondoc.online",
       path: "/",
       maxAge: 60 * 60 * 24 * 30 * 1000,
     });

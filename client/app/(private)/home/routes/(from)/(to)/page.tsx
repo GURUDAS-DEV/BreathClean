@@ -281,7 +281,7 @@ const RouteContent = () => {
             } else if (errorJson.message) {
               errorMessage = errorJson.message;
             }
-          } catch (e) {
+          } catch {
             // ignore JSON parse error
           }
 

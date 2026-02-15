@@ -327,16 +327,24 @@ export const getScoreController = async (req: Request, res: Response) => {
         throw new Error(`Weather data missing for route ${index}`);
       }
 
-      const routeAQI = aqiData[index];
-      if (!routeAQI) {
-        throw new Error(`AQI data missing for route ${index}`);
+      const routeAQI =
+        aqiData[index] ??
+        ({
+          routeIndex: index,
+          points: [],
+          totalPoints: 0,
+          successfulFetches: 0,
+        } as RouteAQIResult);
+      if (!aqiData[index]) {
+        console.warn(`AQI data missing for route ${index}. Using fallback.`);
       }
+
+      const aqiScore = calculateAQIScore(routeAQI);
 
       const trafficValue = traffic[index] || 0;
 
       // Calculate individual scores
       const weatherScore = calculateWeatherScore(routeWeather);
-      const aqiScore = calculateAQIScore(routeAQI);
       const trafficScore = calculateTrafficScore(trafficValue);
 
       // Extract detailed weather data
