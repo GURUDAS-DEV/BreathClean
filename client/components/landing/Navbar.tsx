@@ -1,19 +1,49 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { Menu, X } from "lucide-react";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    if (pathname === "/") {
+      e.preventDefault();
+      const element = document.getElementById(id);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+        setOpen(false);
+      }
+    } else {
+      setOpen(false);
+    }
+  };
 
   return (
-    <nav className="dark:bg-bc-bg-dark/80 fixed top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md dark:border-slate-800">
+    <nav
+      className={`fixed top-0 z-50 w-full transition-all duration-300 ${
+        scrolled
+          ? "border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/90"
+          : "border-transparent bg-transparent"
+      }`}
+    >
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-2">
-          <div className="bg-bc-primary flex h-8 w-8 items-center justify-center rounded-lg shadow-md">
+          <div className="bg-bc-primary flex h-8 w-8 items-center justify-center rounded-lg shadow-md transition-transform hover:scale-105">
             <svg
               width="20"
               height="20"
@@ -36,15 +66,24 @@ export default function Navbar() {
         <div className="hidden items-center gap-8 md:flex">
           <Link
             className="hover:text-bc-primary text-sm font-semibold transition-colors"
-            href="/features"
+            href="/#how-it-works"
+            onClick={(e) => handleClick(e, "how-it-works")}
           >
             How it Works
           </Link>
           <Link
             className="hover:text-bc-primary text-sm font-semibold transition-colors"
-            href="/about"
+            href="/#mission"
+            onClick={(e) => handleClick(e, "mission")}
           >
-            About
+            Mission
+          </Link>
+          <Link
+            className="hover:text-bc-primary text-sm font-semibold transition-colors"
+            href="/#team"
+            onClick={(e) => handleClick(e, "team")}
+          >
+            Team
           </Link>
           <Link
             className="bg-bc-primary hover:shadow-bc-primary/20 rounded-full px-6 py-2.5 font-bold text-white transition-all hover:shadow-lg active:scale-95"
@@ -66,21 +105,28 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {open && (
-        <div className="dark:bg-bc-bg-dark/95 border-t border-slate-200 bg-white/95 backdrop-blur-md md:hidden dark:border-slate-800">
+        <div className="dark:bg-bc-bg-dark/95 border-t border-slate-200 bg-white/95 shadow-xl backdrop-blur-md md:hidden dark:border-slate-800">
           <div className="flex flex-col space-y-4 px-6 py-4">
             <Link
               className="hover:text-bc-primary py-2 text-sm font-semibold transition-colors"
-              href="/features"
-              onClick={() => setOpen(false)}
+              href="/#how-it-works"
+              onClick={(e) => handleClick(e, "how-it-works")}
             >
               How it Works
             </Link>
             <Link
               className="hover:text-bc-primary py-2 text-sm font-semibold transition-colors"
-              href="/about"
-              onClick={() => setOpen(false)}
+              href="/#mission"
+              onClick={(e) => handleClick(e, "mission")}
             >
-              About
+              Mission
+            </Link>
+            <Link
+              className="hover:text-bc-primary py-2 text-sm font-semibold transition-colors"
+              href="/#team"
+              onClick={(e) => handleClick(e, "team")}
+            >
+              Team
             </Link>
             <Link
               className="bg-bc-primary hover:shadow-bc-primary/20 rounded-full px-6 py-3 text-center font-bold text-white transition-all hover:shadow-lg active:scale-95"
