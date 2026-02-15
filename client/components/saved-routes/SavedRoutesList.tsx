@@ -23,7 +23,7 @@ export default function SavedRoutesList({
   onDeleteRoute,
 }: SavedRoutesListProps) {
   return (
-    <div className="flex h-full w-full flex-col border-r border-slate-200 bg-white lg:w-[400px] dark:border-slate-700 dark:bg-[#102216]">
+    <div className="flex h-full w-full flex-col bg-white lg:w-[400px] lg:border-r lg:border-slate-200 dark:bg-[#102216] dark:lg:border-slate-700">
       <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
         <Bookmark className="h-5 w-5 text-[#2bee6c]" />
         <h2 className="text-base font-bold text-slate-900 dark:text-white">

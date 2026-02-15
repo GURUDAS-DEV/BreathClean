@@ -4,7 +4,7 @@ import { MapPin, Route } from "lucide-react";
 
 export default function EmptyState() {
   return (
-    <div className="flex min-h-[calc(100vh-56px)] items-center justify-center bg-[#f6f8f6] dark:bg-[#102216]">
+    <div className="flex flex-1 items-center justify-center bg-[#f6f8f6] dark:bg-[#102216]">
       <div className="flex max-w-md flex-col items-center px-6 text-center">
         <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-[#2bee6c]/10">
           <Route className="h-10 w-10 text-[#2bee6c]" />
