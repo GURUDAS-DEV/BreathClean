@@ -36,13 +36,13 @@ export default function Navbar() {
         <div className="hidden items-center gap-8 md:flex">
           <Link
             className="hover:text-bc-primary text-sm font-semibold transition-colors"
-            href="#features"
+            href="/features"
           >
             How it Works
           </Link>
           <Link
             className="hover:text-bc-primary text-sm font-semibold transition-colors"
-            href="#about"
+            href="/about"
           >
             About
           </Link>
