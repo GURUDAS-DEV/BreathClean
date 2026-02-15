@@ -4,7 +4,11 @@ import CTA from "@/components/landing/CTA";
 import Features from "@/components/landing/Features";
 import Footer from "@/components/landing/Footer";
 import Hero from "@/components/landing/Hero";
+import HowItWorks from "@/components/landing/HowItWorks";
+import Mission from "@/components/landing/Mission";
 import Navbar from "@/components/landing/Navbar";
+import Team from "@/components/landing/Team";
+import Testimonials from "@/components/landing/Testimonials";
 
 export const metadata: Metadata = {
   title: "BreatheClean — Breathe Easier on Every Journey",
@@ -18,6 +22,10 @@ export default function Home() {
       <Navbar />
       <Hero />
       <Features />
+      <HowItWorks />
+      <Mission />
+      <Testimonials />
+      <Team />
       <CTA />
       <Footer />
     </>
