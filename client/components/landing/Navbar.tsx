@@ -70,14 +70,14 @@ export default function Navbar() {
           <div className="flex flex-col space-y-4 px-6 py-4">
             <Link
               className="hover:text-bc-primary py-2 text-sm font-semibold transition-colors"
-              href="#features"
+              href="/features"
               onClick={() => setOpen(false)}
             >
               How it Works
             </Link>
             <Link
               className="hover:text-bc-primary py-2 text-sm font-semibold transition-colors"
-              href="#about"
+              href="/about"
               onClick={() => setOpen(false)}
             >
               About

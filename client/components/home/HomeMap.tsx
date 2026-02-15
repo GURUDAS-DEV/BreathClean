@@ -1046,7 +1046,7 @@ export default function HomeMap({ className }: HomeMapProps) {
                 <p className="text-sm leading-snug text-slate-600 dark:text-slate-300">
                   Join{" "}
                   <span className="font-semibold text-slate-800 dark:text-white">
-                    50,000+
+                    100+
                   </span>{" "}
                   commuters prioritizing their respiratory health today.
                 </p>

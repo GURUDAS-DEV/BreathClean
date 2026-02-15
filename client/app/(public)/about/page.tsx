@@ -25,8 +25,9 @@ const contributors = [
     username: "kaihere14",
     role: "Contributor",
     github: "https://github.com/kaihere14",
-    avatar: "https://github.com/kaihere14.png",
-    bio: "Specializing in frontend architecture and crafting beautiful, responsive interfaces.",
+    avatar:
+      "https://res.cloudinary.com/dw87upoot/image/upload/v1771141688/Screenshot_2026-02-15_at_1.17.55_PM_om6bjv.png",
+    bio: "Backend developer interested in system design, authentication, data modeling, and building reliable services",
   },
 ];
 
@@ -105,13 +106,15 @@ export default function AboutPage() {
               <div className="relative">
                 <div className="bg-bc-primary/10 absolute inset-0 scale-105 rotate-3 transform rounded-3xl"></div>
                 <div className="relative overflow-hidden rounded-3xl border border-slate-100 bg-slate-50 shadow-xl dark:border-slate-800 dark:bg-slate-900">
-                  <Image
-                    src="https://images.unsplash.com/photo-1532601224476-15c79f2f7a51?auto=format&fit=crop&q=80&w=1000"
-                    alt="Fresh clean nature"
-                    width={800}
-                    height={600}
-                    className="h-full w-full object-cover opacity-90 transition-transform duration-700 hover:scale-105"
-                  />
+                  <div>
+                    <Image
+                      src="https://images.unsplash.com/photo-1532601224476-15c79f2f7a51?auto=format&fit=crop&q=80&w=1000"
+                      alt="Fresh clean nature"
+                      width={800}
+                      height={600}
+                      className="h-full w-full object-cover opacity-90 transition-transform duration-700 hover:scale-105"
+                    />
+                  </div>
                   <div className="absolute inset-0 flex items-end bg-linear-to-t from-slate-900/80 to-transparent p-8">
                     <div className="text-white">
                       <div className="mb-2 flex items-center gap-2 font-bold text-emerald-400">
@@ -195,13 +198,15 @@ export default function AboutPage() {
 
                   <div className="relative mt-8 flex flex-col items-center text-center">
                     <div className="relative mb-4 rounded-full bg-white p-1 dark:bg-slate-900">
-                      <Image
-                        src={member.avatar}
-                        alt={member.username}
-                        width={100}
-                        height={100}
-                        className="rounded-full shadow-lg"
-                      />
+                      <div className="h-24 w-24 overflow-hidden rounded-full">
+                        <Image
+                          src={member.avatar}
+                          alt={member.username}
+                          width={100}
+                          height={100}
+                          className="rounded-full shadow-lg"
+                        />
+                      </div>
                       <div className="bg-bc-primary absolute right-0 bottom-0 rounded-full border-2 border-white p-1.5 dark:border-slate-900">
                         <Github className="h-4 w-4 text-white" />
                       </div>
@@ -221,7 +226,7 @@ export default function AboutPage() {
                       <Link
                         href={member.github}
                         target="_blank"
-                        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-100 py-2.5 text-sm font-bold text-slate-900 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
+                        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-100 px-2 py-2.5 text-sm font-bold text-slate-900 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
                       >
                         <Github className="h-4 w-4" /> Github
                       </Link>
