@@ -9,11 +9,15 @@ type TravelMode = "walking" | "driving" | "cycling";
 export type RouteData = {
   distance: number;
   duration: number;
+  trafficDuration?: number;
+  trafficFactor?: number;
   geometry: {
     coordinates: [number, number][];
     type: string;
   };
-  aqiScore?: number;
+  overallScore?: number;
+  weatherScore?: number;
+  trafficScore?: number;
   pollutionReductionPct?: number;
   exposureWarning?: string;
 };
@@ -21,6 +25,7 @@ export type RouteData = {
 type RouteComparisonPanelProps = {
   routes: RouteData[];
   isLoading: boolean;
+  scoresLoading: boolean;
   error: string | null;
   selectedMode: TravelMode;
   selectedRouteIndex: number;
@@ -30,6 +35,7 @@ type RouteComparisonPanelProps = {
 export default function RouteComparisonPanel({
   routes,
   isLoading,
+  scoresLoading,
   error,
   selectedMode,
   selectedRouteIndex,
@@ -56,11 +62,35 @@ export default function RouteComparisonPanel({
     return `${km} km`;
   };
 
-  const getRouteLabel = (route: RouteData, allRoutes: RouteData[]) => {
-    const maxAqi = Math.max(...allRoutes.map((r) => r.aqiScore || 0));
-    const minDuration = Math.min(...allRoutes.map((r) => r.duration));
-    if (route.aqiScore === maxAqi && maxAqi > 0) return "Cleanest Path";
-    if (route.duration === minDuration) return "Fastest";
+  const getBestRouteIndex = (allRoutes: RouteData[]) => {
+    const maxScore = Math.max(...allRoutes.map((r) => r.overallScore ?? -1));
+    if (maxScore <= 0) return 0;
+    // Among routes with the max score, pick the fastest
+    const candidates = allRoutes
+      .map((r, i) => ({
+        i,
+        score: r.overallScore ?? -1,
+        dur: r.trafficDuration ?? r.duration,
+      }))
+      .filter((c) => c.score === maxScore);
+    candidates.sort((a, b) => a.dur - b.dur);
+    return candidates[0]?.i ?? 0;
+  };
+
+  const getRouteLabel = (
+    route: RouteData,
+    allRoutes: RouteData[],
+    index: number
+  ) => {
+    const bestIdx = getBestRouteIndex(allRoutes);
+    const minDuration = Math.min(
+      ...allRoutes.map((r) => r.trafficDuration ?? r.duration)
+    );
+    const routeDur = route.trafficDuration ?? route.duration;
+
+    if (index === bestIdx && (route.overallScore ?? 0) > 0)
+      return "Cleanest Path";
+    if (routeDur === minDuration) return "Fastest";
     return "Balanced";
   };
 
@@ -84,18 +114,20 @@ export default function RouteComparisonPanel({
         }`}
         style={isMobile ? { width: "280px", minWidth: "280px" } : undefined}
       >
-        {index === 0 && (
-          <div className="absolute -top-3 right-0 p-2">
-            <span className="rounded-full border border-[#2bee6c]/20 bg-[#2bee6c]/10 px-2 py-1 text-[10px] font-bold tracking-tight text-[#2bee6c] uppercase">
-              Best for Health
-            </span>
-          </div>
-        )}
+        {!scoresLoading &&
+          index === getBestRouteIndex(routes) &&
+          (route.overallScore ?? 0) > 0 && (
+            <div className="absolute -top-3 right-0 p-2">
+              <span className="rounded-full border border-[#2bee6c]/20 bg-[#2bee6c]/10 px-2 py-1 text-[10px] font-bold tracking-tight text-[#2bee6c] uppercase">
+                Best for Health
+              </span>
+            </div>
+          )}
         <div className={isMobile ? "p-4" : "p-5"}>
           <div className="mb-3 flex items-start justify-between">
             <div>
               <h3 className="font-bold text-slate-800 dark:text-white">
-                {getRouteLabel(route, routes)}
+                {getRouteLabel(route, routes, index)}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 via{" "}
@@ -107,25 +139,43 @@ export default function RouteComparisonPanel({
               </p>
             </div>
             <div className="text-right">
-              <span
-                className={`text-2xl font-black ${
-                  (route.aqiScore || 0) >= 80
-                    ? "text-[#2bee6c]"
-                    : "text-slate-500 dark:text-slate-400"
-                }`}
-              >
-                {route.aqiScore ?? "(demo)"}
-              </span>
-              <span className="block text-[10px] font-bold text-slate-400">
-                AQI SCORE
-              </span>
+              {scoresLoading ? (
+                <>
+                  <div className="ml-auto h-7 w-10 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+                  <div className="mt-1 ml-auto h-3 w-14 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+                </>
+              ) : (
+                <>
+                  <span
+                    className={`text-2xl font-black ${(() => {
+                      const score = route.overallScore ?? 0;
+                      const allScores = routes.map((r) => r.overallScore ?? 0);
+                      const maxScore = Math.max(...allScores);
+                      const minScore = Math.min(...allScores);
+                      const isLowest =
+                        score === minScore && minScore < maxScore;
+                      if (isLowest) return "text-slate-400 dark:text-slate-500";
+                      if (score >= 80) return "text-[#2bee6c]";
+                      if (score >= 50) return "text-orange-500";
+                      return "text-slate-500 dark:text-slate-400";
+                    })()}`}
+                  >
+                    {route.overallScore != null
+                      ? Math.round(route.overallScore)
+                      : "—"}
+                  </span>
+                  <span className="block text-[10px] font-bold text-slate-400">
+                    HEALTH SCORE
+                  </span>
+                </>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex items-center gap-2">
               <Timer className="text-slate-400" size={14} />
               <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                {formatDuration(route.duration)}
+                {formatDuration(route.trafficDuration ?? route.duration)}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -135,21 +185,84 @@ export default function RouteComparisonPanel({
               </span>
             </div>
           </div>
-          {route.pollutionReductionPct !== undefined && (
-            <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-700">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                Pollution Exposure
-              </span>
-              <span className="text-xs font-bold text-[#2bee6c]">
-                -{route.pollutionReductionPct}% avg.
+          {route.trafficFactor != null && route.trafficFactor > 1.0 && (
+            <div className="mt-2 flex items-center justify-between rounded-lg bg-slate-50 px-3 py-1.5 dark:bg-slate-700/50">
+              <div className="flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span
+                    className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${
+                      route.trafficFactor >= 1.5
+                        ? "bg-red-400"
+                        : route.trafficFactor >= 1.2
+                          ? "bg-orange-400"
+                          : "bg-yellow-400"
+                    }`}
+                  />
+                  <span
+                    className={`relative inline-flex h-2 w-2 rounded-full ${
+                      route.trafficFactor >= 1.5
+                        ? "bg-red-500"
+                        : route.trafficFactor >= 1.2
+                          ? "bg-orange-500"
+                          : "bg-yellow-500"
+                    }`}
+                  />
+                </span>
+                <span
+                  className={`text-xs font-semibold ${
+                    route.trafficFactor >= 1.5
+                      ? "text-red-600 dark:text-red-400"
+                      : route.trafficFactor >= 1.2
+                        ? "text-orange-600 dark:text-orange-400"
+                        : "text-yellow-600 dark:text-yellow-400"
+                  }`}
+                >
+                  +
+                  {formatDuration(
+                    (route.trafficDuration ?? route.duration) - route.duration
+                  )}{" "}
+                  delay
+                </span>
+              </div>
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                  route.trafficFactor >= 1.5
+                    ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                    : route.trafficFactor >= 1.2
+                      ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
+                      : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                }`}
+              >
+                {route.trafficFactor}x slower
               </span>
             </div>
           )}
-          {route.exposureWarning && (
-            <div className="mt-2 flex items-center gap-1 text-[10px] font-bold text-red-500">
-              <AlertTriangle size={14} />
-              {route.exposureWarning}
+          {scoresLoading ? (
+            <div className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-700">
+              <div className="flex items-center justify-between">
+                <div className="h-3 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+                <div className="h-3 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+              </div>
             </div>
+          ) : (
+            <>
+              {route.pollutionReductionPct !== undefined && (
+                <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-700">
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Pollution Exposure
+                  </span>
+                  <span className="text-xs font-bold text-[#2bee6c]">
+                    -{route.pollutionReductionPct}% avg.
+                  </span>
+                </div>
+              )}
+              {route.exposureWarning && (
+                <div className="mt-2 flex items-center gap-1 text-[10px] font-bold text-red-500">
+                  <AlertTriangle size={14} />
+                  {route.exposureWarning}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

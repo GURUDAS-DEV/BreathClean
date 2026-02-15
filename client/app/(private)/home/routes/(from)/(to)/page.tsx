@@ -21,12 +21,16 @@ type Coordinates = {
 
 type RouteData = {
   distance: number; // in meters
-  duration: number; // in seconds
+  duration: number; // in seconds (base, without traffic)
+  trafficDuration?: number; // in seconds (with live traffic, driving only)
+  trafficFactor?: number; // trafficDuration / duration (1.0 = no traffic)
   geometry: {
     coordinates: [number, number][];
     type: string;
   };
-  aqiScore?: number;
+  overallScore?: number;
+  weatherScore?: number;
+  trafficScore?: number;
   pollutionReductionPct?: number;
   exposureWarning?: string;
 };
@@ -61,6 +65,7 @@ const RouteContent = () => {
   const [selectedMode, setSelectedMode] = useState<TravelMode>("driving");
   const [routes, setRoutes] = useState<RouteData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [scoresLoading, setScoresLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
   const [routeName, setRouteName] = useState("");
@@ -124,6 +129,103 @@ const RouteContent = () => {
     }
   };
 
+  // Fetch scores from backend scoring API
+  const fetchScores = async (routeData: RouteData[], mode: TravelMode) => {
+    setScoresLoading(true);
+    try {
+      const payload = {
+        routes: routeData.map((r) => ({
+          distance: r.distance / 1000,
+          duration: r.duration / 60,
+          routeGeometry: r.geometry,
+          travelMode: mode,
+        })),
+        traffic:
+          mode === "driving"
+            ? routeData.map((r) => {
+                const factor = r.trafficFactor ?? 1;
+                return Math.min(Math.max((factor - 1) * 3, 0), 3);
+              })
+            : [],
+      };
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/score/compute`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!response.ok) {
+        console.error("Score API error:", response.status);
+        return;
+      }
+
+      const data = await response.json();
+      const scoredRoutes = data.data?.routes;
+      if (scoredRoutes && Array.isArray(scoredRoutes)) {
+        const scores = scoredRoutes.map(
+          (sr: {
+            overallScore: number;
+            weatherScore: { overall: number };
+            trafficScore: number;
+          }) => ({
+            overall: sr.overallScore,
+            weather: sr.weatherScore?.overall,
+            traffic: sr.trafficScore,
+          })
+        );
+        const overallScores = scores.map((s: { overall: number }) => s.overall);
+        const maxScore = Math.max(...overallScores);
+        const minScore = Math.min(...overallScores);
+
+        // Find best route: highest score wins; if tied, pick the fastest
+        let bestIndex = 0;
+        let bestDuration = Infinity;
+        overallScores.forEach((score: number, i: number) => {
+          const dur =
+            routes[i]?.trafficDuration ?? routes[i]?.duration ?? Infinity;
+          if (
+            score > overallScores[bestIndex] ||
+            (score === overallScores[bestIndex] && dur < bestDuration)
+          ) {
+            bestIndex = i;
+            bestDuration = dur;
+          }
+        });
+        setSelectedRouteIndex(bestIndex);
+
+        setRoutes((prev) =>
+          prev.map((route, i) => {
+            const s = scores[i];
+            const score = s?.overall ?? undefined;
+            const reductionPct =
+              maxScore > minScore && score === maxScore
+                ? Math.round(((maxScore - minScore) / maxScore) * 100)
+                : undefined;
+            const warning =
+              score != null && score < 50 ? "High Exposure Zone" : undefined;
+            return {
+              ...route,
+              overallScore: score,
+              weatherScore: s?.weather,
+              trafficScore: s?.traffic,
+              pollutionReductionPct: reductionPct,
+              exposureWarning: warning,
+            };
+          })
+        );
+      }
+    } catch (err) {
+      console.error("Error fetching scores:", err);
+    } finally {
+      setScoresLoading(false);
+    }
+  };
+
   // Fetch routes from Mapbox Directions API
   const fetchRoutes = useCallback(
     async (mode: TravelMode) => {
@@ -138,59 +240,82 @@ const RouteContent = () => {
       setError(null);
 
       try {
-        const profile = `mapbox/${mode}`;
         const coordinates = `${source.lng},${source.lat};${destination.lng},${destination.lat}`;
+        const baseProfile = `mapbox/${mode}`;
 
-        // Request multiple alternative routes
-        const url = `https://api.mapbox.com/directions/v5/${profile}/${coordinates}?alternatives=true&geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`;
+        // Base request (without traffic)
+        const baseUrl = `https://api.mapbox.com/directions/v5/${baseProfile}/${coordinates}?alternatives=true&geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`;
 
-        const response = await fetch(url);
+        // For driving, also fetch traffic-aware durations in parallel
+        const trafficUrl =
+          mode === "driving"
+            ? `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${coordinates}?alternatives=true&geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`
+            : null;
 
-        if (!response.ok) {
-          const errorText = await response.text();
+        const [baseResponse, trafficResponse] = await Promise.all([
+          fetch(baseUrl),
+          trafficUrl ? fetch(trafficUrl) : Promise.resolve(null),
+        ]);
+
+        if (!baseResponse.ok) {
+          const errorText = await baseResponse.text();
           console.error(
-            `FetchRoutes HTTP error: ${response.status} ${response.statusText}`,
+            `FetchRoutes HTTP error: ${baseResponse.status} ${baseResponse.statusText}`,
             errorText
           );
           setError(
-            `Route fetch failed: ${response.status} ${response.statusText}`
+            `Route fetch failed: ${baseResponse.status} ${baseResponse.statusText}`
           );
           setRoutes([]);
           return;
         }
 
-        const data = await response.json();
+        const data = await baseResponse.json();
+
+        // Parse traffic routes and build a lookup by distance for matching
+        let trafficRoutes: MapboxRoute[] = [];
+        if (trafficResponse && trafficResponse.ok) {
+          const trafficData = await trafficResponse.json();
+          if (trafficData.code === "Ok" && trafficData.routes) {
+            trafficRoutes = trafficData.routes;
+          }
+        }
 
         if (data.code === "Ok" && data.routes && data.routes.length > 0) {
           // Take up to 3 routes
-          const fetchedRoutes = data.routes
+          const fetchedRoutes: RouteData[] = data.routes
             .slice(0, 3)
-            .map((route: MapboxRoute, index: number) => {
-              // Placeholder/Demo data logic
-              let aqiScore = 80;
-              let pollutionReductionPct: number | undefined = undefined;
-              let exposureWarning: string | undefined = undefined;
+            .map((route: MapboxRoute) => {
+              // Match this base route to the closest traffic route by distance
+              let trafficDuration: number | undefined;
+              let trafficFactor: number | undefined;
+              if (trafficRoutes.length > 0) {
+                const matched = trafficRoutes.reduce((best, tr) => {
+                  const diff = Math.abs(tr.distance - route.distance);
+                  const bestDiff = Math.abs(best.distance - route.distance);
+                  return diff < bestDiff ? tr : best;
+                }, trafficRoutes[0]);
 
-              if (index === 0) {
-                aqiScore = 92;
-                pollutionReductionPct = 34;
-              } else if (index === 1) {
-                aqiScore = 74;
-              } else {
-                aqiScore = 42;
-                exposureWarning = "High PM2.5 Exposure Zone";
+                // Only accept match if distances are within 10% of each other
+                const distDiffPct =
+                  Math.abs(matched.distance - route.distance) / route.distance;
+                if (distDiffPct < 0.3) {
+                  trafficDuration = matched.duration;
+                  trafficFactor =
+                    Math.round((matched.duration / route.duration) * 100) / 100;
+                }
               }
 
               return {
                 distance: route.distance,
                 duration: route.duration,
+                trafficDuration,
+                trafficFactor,
                 geometry: route.geometry,
-                aqiScore,
-                pollutionReductionPct,
-                exposureWarning,
               };
             });
           setRoutes(fetchedRoutes);
+          fetchScores(fetchedRoutes, mode);
         } else {
           setError("No routes found. Please try different locations.");
           setRoutes([]);
@@ -262,7 +387,8 @@ const RouteContent = () => {
           distance: route.distance / 1000,
           duration: route.duration / 60,
           routeGeometry: route.geometry,
-          lastComputedScore: route.aqiScore || Math.floor(Math.random() * 100),
+          lastComputedScore:
+            route.overallScore || Math.floor(Math.random() * 100),
           lastComputedAt: new Date(),
           travelMode: selectedMode,
         })),
@@ -319,6 +445,7 @@ const RouteContent = () => {
         <RouteComparisonPanel
           routes={routes}
           isLoading={isLoading}
+          scoresLoading={scoresLoading}
           error={error}
           selectedMode={selectedMode}
           selectedRouteIndex={selectedRouteIndex}
