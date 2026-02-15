@@ -1,5 +1,3 @@
-import { Suspense } from "react";
-
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -7,19 +5,15 @@ import NotificationPreference from "@/components/profile/NotificationPreference"
 import ProfileCard from "@/components/profile/ProfileCard";
 import SavedRoutes from "@/components/profile/SavedRoutes";
 import type { UserData } from "@/components/profile/types";
+import type { ISavedRoute } from "@/components/saved-routes/types";
 
-async function getUser(): Promise<UserData | null> {
-  const cookieStore = await cookies();
-  const refreshToken = cookieStore.get("refreshToken");
-
-  if (!refreshToken) return null;
-
+async function getUser(refreshToken: string): Promise<UserData | null> {
   try {
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/user`,
       {
         headers: {
-          Cookie: `refreshToken=${refreshToken.value}`,
+          Cookie: `refreshToken=${refreshToken}`,
         },
         cache: "no-store",
       }
@@ -33,8 +27,39 @@ async function getUser(): Promise<UserData | null> {
   }
 }
 
+async function getTopRoutes(refreshToken: string): Promise<ISavedRoute[]> {
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/saved-routes`,
+      {
+        headers: {
+          Cookie: `refreshToken=${refreshToken}`,
+        },
+        cache: "no-store",
+      }
+    );
+
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.success && data.routes ? data.routes.slice(0, 3) : [];
+  } catch {
+    return [];
+  }
+}
+
 export default async function ProfilePage() {
-  const user = await getUser();
+  const cookieStore = await cookies();
+  const refreshToken = cookieStore.get("refreshToken");
+
+  if (!refreshToken) {
+    redirect("/login");
+  }
+
+  // Fetch user and routes in parallel
+  const [user, routes] = await Promise.all([
+    getUser(refreshToken.value),
+    getTopRoutes(refreshToken.value),
+  ]);
 
   if (!user) {
     redirect("/login");
@@ -44,23 +69,7 @@ export default async function ProfilePage() {
     <div className="bg-bc-bg-light min-h-screen">
       <main className="mx-auto max-w-4xl px-6 py-8">
         <ProfileCard user={user} />
-        <Suspense
-          fallback={
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="mb-4 h-6 w-32 animate-pulse rounded bg-slate-100" />
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="h-20 animate-pulse rounded-xl border border-slate-100 bg-slate-50"
-                  />
-                ))}
-              </div>
-            </div>
-          }
-        >
-          <SavedRoutes />
-        </Suspense>
+        <SavedRoutes routes={routes} />
         <NotificationPreference />
       </main>
     </div>

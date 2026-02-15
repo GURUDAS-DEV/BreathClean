@@ -179,6 +179,7 @@ export default function SavedRoutesView({
                     route={selectedRoute}
                     subRouteIndex={selectedSubRouteIndex}
                     onDelete={handleDeleteRoute}
+                    onSubRouteSelect={setSelectedSubRouteIndex}
                   />
                 </div>
               )}

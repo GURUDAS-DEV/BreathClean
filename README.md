@@ -24,6 +24,7 @@ In modern urban environments, air pollution varies significantly from street to 
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **Framework:** [Next.js 15+](https://nextjs.org/) (App Router)
 - **Styling:** [Tailwind CSS 4](https://tailwindcss.com/)
 - **Mapping:** [Mapbox GL JS](https://www.mapbox.com/)
@@ -31,12 +32,14 @@ In modern urban environments, air pollution varies significantly from street to 
 - **Components:** [Shadcn UI](https://ui.shadcn.com/)
 
 ### Backend
+
 - **Runtime:** [Node.js](https://nodejs.org/) with [TypeScript](https://www.typescriptlang.org/)
 - **Framework:** [Express.js](https://expressjs.com/)
 - **Database:** [MongoDB](https://www.mongodb.com/) with [Mongoose](https://mongoosejs.com/)
 - **Authentication:** OAuth & Custom JWT-based Auth
 
 ### Data Processing
+
 - **Engine:** Python (for advanced AQI data modeling and processing)
 
 ## 📁 Project Structure
@@ -52,6 +55,7 @@ In modern urban environments, air pollution varies significantly from street to 
 ## 🚦 Getting Started
 
 ### Prerequisites
+
 - Node.js (v20+)
 - MongoDB
 - Mapbox API Token
@@ -59,12 +63,14 @@ In modern urban environments, air pollution varies significantly from street to 
 ### Installation
 
 1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/kaihere14/BreathClean.git
    cd BreathClean
    ```
 
 2. **Install dependencies:**
+
    ```bash
    npm install
    ```
@@ -78,7 +84,6 @@ In modern urban environments, air pollution varies significantly from street to 
    npm run dev:client
    npm run dev:server
    ```
-
 
 ---
 

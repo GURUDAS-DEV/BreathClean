@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
 
 import { Clock, Inbox, MapPin } from "lucide-react";
@@ -14,35 +13,11 @@ function getAqiBadge(aqi: number) {
   return { label: "Poor", color: "bg-red-100 text-red-700" };
 }
 
-async function getTopRoutes(): Promise<ISavedRoute[]> {
-  const cookieStore = await cookies();
-  const refreshToken = cookieStore.get("refreshToken");
-
-  if (!refreshToken) return [];
-
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/saved-routes`,
-      {
-        headers: {
-          Cookie: `refreshToken=${refreshToken.value}`,
-        },
-        next: { revalidate: 0 }, // Ensure fresh data
-      }
-    );
-
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.success && data.routes ? data.routes.slice(0, 3) : [];
-  } catch (error) {
-    console.error("Failed to fetch routes on server:", error);
-    return [];
-  }
+interface SavedRoutesProps {
+  routes: ISavedRoute[];
 }
 
-export default async function SavedRoutes() {
-  const routes = await getTopRoutes();
-
+export default function SavedRoutes({ routes }: SavedRoutesProps) {
   if (routes.length === 0) {
     return (
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
