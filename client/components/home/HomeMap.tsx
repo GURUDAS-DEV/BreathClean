@@ -542,7 +542,9 @@ export default function HomeMap({ className }: HomeMapProps) {
           Choose Starting Point on Map
         </button>
       </div>
+
       {/* Destination Input Group */}
+
       <div className="relative space-y-1">
         <div className="group relative">
           <div className="absolute top-1/2 left-3.5 z-10 flex -translate-y-1/2 items-center justify-center">
