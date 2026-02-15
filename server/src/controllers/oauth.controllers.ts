@@ -12,7 +12,6 @@ const refreshSecret = process.env.REFRESH_TOKEN_SECRET!;
 
 export const googleLink = async (_req: Request, res: Response) => {
   try {
-    console.log("Generating Google OAuth link...");
     const response = simpleGoogleLink(clientId, redirectUri);
     return res.json({ url: response });
   } catch (error) {
@@ -23,7 +22,6 @@ export const googleLink = async (_req: Request, res: Response) => {
 
 export const googleCallback = async (req: Request, res: Response) => {
   try {
-    console.log("Handling Google OAuth callback...");
     const { code } = req.query;
 
     const response = await simpleGoogleCallback(
@@ -54,7 +52,7 @@ export const googleCallback = async (req: Request, res: Response) => {
 
     return res.redirect(`${process.env.CLIENT_REDIRECT_URL}/home`);
   } catch (error) {
-    console.log("Error in googleCallback:", error);
+    console.error("Error in googleCallback:", error);
     return res.status(500).json({ errorMsg: "Internal server error", error });
   }
 };
@@ -62,10 +60,9 @@ export const googleCallback = async (req: Request, res: Response) => {
 export const googleLogout = async (_req: Request, res: Response) => {
   try {
     res.clearCookie("refreshToken");
-    console.log("Client Redirect URL : ", process.env.CLIENT_REDIRECT_URL);
     return res.redirect(`${process.env.CLIENT_REDIRECT_URL}`);
   } catch (error) {
-    console.log("Error in googleLogout:", error);
+    console.error("Error in googleLogout:", error);
     return res.status(500).json({ errorMsg: "Internal server error", error });
   }
 };
@@ -78,7 +75,7 @@ export const getUser = async (req: Request, res: Response) => {
     }
     return res.json({ user });
   } catch (error) {
-    console.log("Error in getUser:", error);
+    console.error("Error in getUser:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };

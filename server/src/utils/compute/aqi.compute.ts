@@ -92,20 +92,6 @@ async function fetchAQIForPoint(
 
     const apiResponse = (await response.json()) as AQIAPIResponse;
 
-    console.log(
-      `[AQI DEBUG] Fetching for ${lat.toFixed(4)},${lon.toFixed(4)}...`
-    );
-    if (apiResponse.status === "ok" && apiResponse.data) {
-      console.log(
-        `[AQI DEBUG] Success! AQI: ${apiResponse.data.aqi}`,
-        apiResponse.data.iaqi
-      );
-    } else {
-      console.warn(
-        `[AQI DEBUG] API returned status '${apiResponse.status}' for ${lat},${lon}`
-      );
-    }
-
     // Check if the API returned valid data
     if (apiResponse.status !== "ok" || !apiResponse.data) {
       console.error(
@@ -229,13 +215,6 @@ export async function computeAQI(
         successfulFetches: pointResults.filter((p) => p.aqi !== null).length,
       };
     });
-
-    console.log(
-      `AQI computation complete: ${results.length} routes, ${results.reduce(
-        (sum, r) => sum + r.totalPoints,
-        0
-      )} total points (Batched Concurrency Limit: ${CONCURRENCY_LIMIT})`
-    );
 
     return results;
   } catch (error) {

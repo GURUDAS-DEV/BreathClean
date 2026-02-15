@@ -209,9 +209,5 @@ export function computeBreakpoints(routes: RouteInput[]): RouteBreakpoints[] {
     result.push(routeBreakpoints);
   }
 
-  console.log(
-    `Computed breakpoints for ${routes.length} routes with ${usedCoordinates.length} total unique points`
-  );
-
   return result;
 }

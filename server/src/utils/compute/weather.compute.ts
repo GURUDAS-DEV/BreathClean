@@ -187,13 +187,6 @@ export async function computeWeather(
       };
     });
 
-    console.log(
-      `Weather computation complete: ${results.length} routes, ${results.reduce(
-        (sum, r) => sum + r.totalPoints,
-        0
-      )} total points (Batched Concurrency Limit: ${CONCURRENCY_LIMIT})`
-    );
-
     return results;
   } catch (error) {
     console.error("Error in computeWeather:", error);
