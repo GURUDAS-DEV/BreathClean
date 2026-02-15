@@ -6,7 +6,10 @@ interface SavedRouteLinkProps {
   routeId: string;
 }
 
-export default function SavedRouteLink({}: SavedRouteLinkProps) {
+export default function SavedRouteLink({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  routeId: _routeId,
+}: SavedRouteLinkProps) {
   // This could handle navigation or tracking in the future
   return (
     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-[#2bee6c] transition-colors group-hover:bg-[#2bee6c] group-hover:text-white">

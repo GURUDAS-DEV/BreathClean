@@ -1,15 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import {
-  Github,
-  Heart,
-  Linkedin,
-  Map,
-  Quote,
-  Twitter,
-  Wind,
-} from "lucide-react";
+import { Github, Heart, Quote, Wind } from "lucide-react";
 
 import Footer from "@/components/landing/Footer";
 import Navbar from "@/components/landing/Navbar";
@@ -241,11 +233,11 @@ export default function AboutPage() {
 
             <div className="mt-12 text-center">
               <Link
-                href="https://github.com/kaihere14/BreathClean" // Assuming main repo text
+                href="https://github.com/kaihere14/BreathClean"
                 className="text-bc-primary inline-flex items-center gap-2 font-bold hover:underline"
               >
                 Want to contribute? Check out our repository{" "}
-                <Twitter className="h-4 w-4" />
+                <Github className="h-4 w-4" />
               </Link>
             </div>
           </div>
