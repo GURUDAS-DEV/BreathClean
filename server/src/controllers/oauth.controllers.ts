@@ -43,11 +43,13 @@ export const googleCallback = async (req: Request, res: Response) => {
     }
     res.cookie("refreshToken", response.tokens.refreshToken, {
       httpOnly: true,
-      secure: true, // ✅ REQUIRED for HTTPS
-      sameSite: "none", // ✅ REQUIRED for cross-site
+      secure: true,
+      sameSite: "lax",
+      domain: ".daemondoc.online",
       path: "/",
       maxAge: 60 * 60 * 24 * 30 * 1000,
     });
+
     return res.redirect(`${process.env.CLIENT_REDIRECT_URL}/home`);
   } catch (error) {
     console.log("Error in googleCallback:", error);
