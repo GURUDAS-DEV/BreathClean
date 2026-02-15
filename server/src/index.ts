@@ -5,6 +5,7 @@ import express from "express";
 
 import authRoutes from "./routes/auth.routes.js";
 import savedRoutesRoutes from "./routes/savedRoutes.routes.js";
+import scoreRoutes from "./routes/score.routes.js";
 import connectDB from "./utils/connectDB.js";
 
 const app = express();
@@ -22,6 +23,7 @@ app.use(cookieParser());
 
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/saved-routes", savedRoutesRoutes);
+app.use("/api/v1/score", scoreRoutes);
 
 app.get("/", (_req, res) => {
   res.json({ message: "Server is running" });
