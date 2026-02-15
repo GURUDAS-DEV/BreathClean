@@ -165,13 +165,9 @@ export default function RouteMapBackground({
   // Update route styles based on selected route
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || !mapLoadedRef.current) return;
 
     const updateStyles = () => {
-      // We iterate based on routes length, or check existence
-      // Assuming we created up to routes.length-1
-      // But to be safe, we can check 0..10 or just loop routes.
-      // Let's loop routes length as layers should correspond
       routes.forEach((_, i) => {
         const layerId = `route-${i}`;
         if (map.getLayer(layerId)) {
@@ -194,13 +190,18 @@ export default function RouteMapBackground({
       });
     };
 
-    if (map.isStyleLoaded()) {
-      updateStyles();
-    } else {
-      map.once("styledata", updateStyles);
-    }
+    // Use requestAnimationFrame to ensure layer updates from the routes
+    // effect have been applied before we try to restyle them
+    const raf = requestAnimationFrame(() => {
+      if (map.isStyleLoaded()) {
+        updateStyles();
+      } else {
+        map.once("styledata", updateStyles);
+      }
+    });
 
     return () => {
+      cancelAnimationFrame(raf);
       map.off("styledata", updateStyles);
     };
   }, [selectedRouteIndex, routes]);
