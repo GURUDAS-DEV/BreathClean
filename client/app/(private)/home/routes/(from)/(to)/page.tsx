@@ -181,8 +181,22 @@ const RouteContent = () => {
         const overallScores = scores.map((s: { overall: number }) => s.overall);
         const maxScore = Math.max(...overallScores);
         const minScore = Math.min(...overallScores);
-        const bestIndex = overallScores.indexOf(maxScore);
-        if (bestIndex >= 0) setSelectedRouteIndex(bestIndex);
+
+        // Find best route: highest score wins; if tied, pick the fastest
+        let bestIndex = 0;
+        let bestDuration = Infinity;
+        overallScores.forEach((score: number, i: number) => {
+          const dur =
+            routes[i]?.trafficDuration ?? routes[i]?.duration ?? Infinity;
+          if (
+            score > overallScores[bestIndex] ||
+            (score === overallScores[bestIndex] && dur < bestDuration)
+          ) {
+            bestIndex = i;
+            bestDuration = dur;
+          }
+        });
+        setSelectedRouteIndex(bestIndex);
 
         setRoutes((prev) =>
           prev.map((route, i) => {

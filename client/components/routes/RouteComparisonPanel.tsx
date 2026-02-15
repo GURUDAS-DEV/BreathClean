@@ -62,12 +62,35 @@ export default function RouteComparisonPanel({
     return `${km} km`;
   };
 
-  const getRouteLabel = (route: RouteData, allRoutes: RouteData[]) => {
-    const maxScore = Math.max(...allRoutes.map((r) => r.overallScore || 0));
-    const minDuration = Math.min(...allRoutes.map((r) => r.duration));
+  const getBestRouteIndex = (allRoutes: RouteData[]) => {
+    const maxScore = Math.max(...allRoutes.map((r) => r.overallScore ?? -1));
+    if (maxScore <= 0) return 0;
+    // Among routes with the max score, pick the fastest
+    const candidates = allRoutes
+      .map((r, i) => ({
+        i,
+        score: r.overallScore ?? -1,
+        dur: r.trafficDuration ?? r.duration,
+      }))
+      .filter((c) => c.score === maxScore);
+    candidates.sort((a, b) => a.dur - b.dur);
+    return candidates[0]?.i ?? 0;
+  };
 
-    if (route.overallScore === maxScore && maxScore > 0) return "Cleanest Path";
-    if (route.duration === minDuration) return "Fastest";
+  const getRouteLabel = (
+    route: RouteData,
+    allRoutes: RouteData[],
+    index: number
+  ) => {
+    const bestIdx = getBestRouteIndex(allRoutes);
+    const minDuration = Math.min(
+      ...allRoutes.map((r) => r.trafficDuration ?? r.duration)
+    );
+    const routeDur = route.trafficDuration ?? route.duration;
+
+    if (index === bestIdx && (route.overallScore ?? 0) > 0)
+      return "Cleanest Path";
+    if (routeDur === minDuration) return "Fastest";
     return "Balanced";
   };
 
@@ -92,16 +115,8 @@ export default function RouteComparisonPanel({
         style={isMobile ? { width: "280px", minWidth: "280px" } : undefined}
       >
         {!scoresLoading &&
-          (() => {
-            const maxScore = Math.max(
-              ...routes.map((r) => r.overallScore ?? -1)
-            );
-            return (
-              route.overallScore != null &&
-              route.overallScore === maxScore &&
-              maxScore > 0
-            );
-          })() && (
+          index === getBestRouteIndex(routes) &&
+          (route.overallScore ?? 0) > 0 && (
             <div className="absolute -top-3 right-0 p-2">
               <span className="rounded-full border border-[#2bee6c]/20 bg-[#2bee6c]/10 px-2 py-1 text-[10px] font-bold tracking-tight text-[#2bee6c] uppercase">
                 Best for Health
@@ -112,7 +127,7 @@ export default function RouteComparisonPanel({
           <div className="mb-3 flex items-start justify-between">
             <div>
               <h3 className="font-bold text-slate-800 dark:text-white">
-                {getRouteLabel(route, routes)}
+                {getRouteLabel(route, routes, index)}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 via{" "}
@@ -132,13 +147,18 @@ export default function RouteComparisonPanel({
               ) : (
                 <>
                   <span
-                    className={`text-2xl font-black ${
-                      (route.overallScore || 0) >= 80
-                        ? "text-[#2bee6c]"
-                        : (route.overallScore || 0) >= 50
-                          ? "text-orange-500"
-                          : "text-slate-500 dark:text-slate-400"
-                    }`}
+                    className={`text-2xl font-black ${(() => {
+                      const score = route.overallScore ?? 0;
+                      const allScores = routes.map((r) => r.overallScore ?? 0);
+                      const maxScore = Math.max(...allScores);
+                      const minScore = Math.min(...allScores);
+                      const isLowest =
+                        score === minScore && minScore < maxScore;
+                      if (isLowest) return "text-slate-400 dark:text-slate-500";
+                      if (score >= 80) return "text-[#2bee6c]";
+                      if (score >= 50) return "text-orange-500";
+                      return "text-slate-500 dark:text-slate-400";
+                    })()}`}
                   >
                     {route.overallScore != null
                       ? Math.round(route.overallScore)
