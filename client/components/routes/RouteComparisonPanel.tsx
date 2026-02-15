@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-import { AlertTriangle, Ruler, Timer } from "lucide-react";
+import { AlertTriangle, Ruler, Timer, Wind } from "lucide-react";
 
 type TravelMode = "walking" | "driving" | "cycling";
 
@@ -17,6 +17,11 @@ export type RouteData = {
   };
   overallScore?: number;
   weatherScore?: number;
+  aqiScore?: {
+    aqi: number; // Raw AQI value
+    score: number; // 0-100 score
+    category: string; // Good, Moderate, Unhealthy, etc.
+  };
   trafficScore?: number;
   pollutionReductionPct?: number;
   exposureWarning?: string;
@@ -30,6 +35,40 @@ type RouteComparisonPanelProps = {
   selectedMode: TravelMode;
   selectedRouteIndex: number;
   onRouteSelect: (index: number) => void;
+};
+
+const getCategoryColor = (category: string): string => {
+  const baseClasses = "rounded-full px-2 py-0.5 text-[10px] font-bold";
+
+  if (category === "Excellent") {
+    return `${baseClasses} bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400`;
+  }
+
+  if (category === "Good") {
+    return `${baseClasses} bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400`;
+  }
+
+  if (category === "Moderate") {
+    return `${baseClasses} bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400`;
+  }
+
+  if (category.includes("Sensitive")) {
+    return `${baseClasses} bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400`;
+  }
+
+  if (category === "Unhealthy") {
+    return `${baseClasses} bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400`;
+  }
+
+  if (category === "Very Unhealthy") {
+    return `${baseClasses} bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400`;
+  }
+
+  if (category === "Hazardous") {
+    return `${baseClasses} bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400`;
+  }
+
+  return `${baseClasses} bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400`;
 };
 
 export default function RouteComparisonPanel({
@@ -106,7 +145,7 @@ export default function RouteComparisonPanel({
         key={index}
         onClick={() => onRouteSelect(index)}
         className={`group relative cursor-pointer overflow-hidden rounded-xl border-2 bg-white shadow-xl transition-all dark:bg-slate-800 ${
-          isMobile ? "flex-shrink-0 snap-start" : "hover:scale-[1.02]"
+          isMobile ? "shrink-0 snap-start" : "hover:scale-[1.02]"
         } ${
           isSelected
             ? "border-[#2bee6c] ring-2 ring-[#2bee6c]/20"
@@ -246,6 +285,27 @@ export default function RouteComparisonPanel({
             </div>
           ) : (
             <>
+              {/* AQI Display */}
+              {route.aqiScore && (
+                <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-700">
+                  <div className="flex items-center gap-2">
+                    <Wind className="text-slate-400" size={14} />
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                      Air Quality
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`${getCategoryColor(route.aqiScore.category)}`}
+                    >
+                      {route.aqiScore.category}
+                    </span>
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                      {Math.round(route.aqiScore.aqi)}
+                    </span>
+                  </div>
+                </div>
+              )}
               {route.pollutionReductionPct !== undefined && (
                 <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-700">
                   <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -274,7 +334,7 @@ export default function RouteComparisonPanel({
     <div
       key={i}
       className={`animate-pulse overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-lg dark:border-slate-700 dark:bg-slate-800 ${
-        isMobile ? "flex-shrink-0 snap-start" : ""
+        isMobile ? "shrink-0 snap-start" : ""
       }`}
       style={isMobile ? { width: "280px", minWidth: "280px" } : undefined}
     >
@@ -317,7 +377,7 @@ export default function RouteComparisonPanel({
             {isLoading ? (
               [1, 2, 3].map((i) => renderSkeleton(i, true))
             ) : error ? (
-              <div className="w-full flex-shrink-0 rounded-xl border border-red-200 bg-red-50 p-4 text-center dark:border-red-900/50 dark:bg-red-900/20">
+              <div className="w-full shrink-0 rounded-xl border border-red-200 bg-red-50 p-4 text-center dark:border-red-900/50 dark:bg-red-900/20">
                 <p className="text-sm font-semibold text-red-600 dark:text-red-400">
                   {error}
                 </p>

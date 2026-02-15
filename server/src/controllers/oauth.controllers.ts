@@ -12,6 +12,7 @@ const refreshSecret = process.env.REFRESH_TOKEN_SECRET!;
 
 export const googleLink = async (_req: Request, res: Response) => {
   try {
+    console.log("Generating Google OAuth link...");
     const response = simpleGoogleLink(clientId, redirectUri);
     return res.json({ url: response });
   } catch (error) {
@@ -22,6 +23,7 @@ export const googleLink = async (_req: Request, res: Response) => {
 
 export const googleCallback = async (req: Request, res: Response) => {
   try {
+    console.log("Handling Google OAuth callback...");
     const { code } = req.query;
 
     const response = await simpleGoogleCallback(
@@ -60,6 +62,7 @@ export const googleCallback = async (req: Request, res: Response) => {
 export const googleLogout = async (_req: Request, res: Response) => {
   try {
     res.clearCookie("refreshToken");
+    console.log("Client Redirect URL : ", process.env.CLIENT_REDIRECT_URL);
     return res.redirect(`${process.env.CLIENT_REDIRECT_URL}`);
   } catch (error) {
     console.log("Error in googleLogout:", error);
