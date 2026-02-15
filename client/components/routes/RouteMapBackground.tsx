@@ -72,10 +72,36 @@ export default function RouteMapBackground({
     };
   }, []);
 
-  // Update routes on map
+  // Track previous geometry to avoid re-fitting bounds when only scores/selection change
+  const prevGeometryRef = useRef<string>("");
+
+  // Update routes on map and apply selection styles in a single effect
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+
+    const applyStyles = () => {
+      routes.forEach((_, i) => {
+        const layerId = `route-${i}`;
+        if (map.getLayer(layerId)) {
+          map.setPaintProperty(
+            layerId,
+            "line-color",
+            i === selectedRouteIndex ? "#2bee6c" : "#94a3b8"
+          );
+          map.setPaintProperty(
+            layerId,
+            "line-width",
+            i === selectedRouteIndex ? 6 : 4
+          );
+          map.setPaintProperty(
+            layerId,
+            "line-opacity",
+            i === selectedRouteIndex ? 1 : 0.6
+          );
+        }
+      });
+    };
 
     const updateRoutes = () => {
       // Cleanup layers/sources that exceed current routes length
@@ -132,79 +158,43 @@ export default function RouteMapBackground({
         i++;
       }
 
-      // Fit map to route bounds
-      if (routes.length > 0 && routes[0].geometry.coordinates.length > 0) {
+      // Only fit bounds when geometry actually changes (not on score/selection updates)
+      const geometryKey = routes
+        .map((r) => `${r.geometry.coordinates.length}`)
+        .join(",");
+      if (
+        geometryKey !== prevGeometryRef.current &&
+        routes.length > 0 &&
+        routes[0].geometry.coordinates.length > 0
+      ) {
+        prevGeometryRef.current = geometryKey;
         const bounds = new mapboxgl.LngLatBounds();
-
         routes.forEach((r) => {
           r.geometry.coordinates.forEach((coord) => {
             bounds.extend(coord as [number, number]);
           });
         });
-
         map.fitBounds(bounds, {
           padding: { top: 180, bottom: 260, left: 50, right: 50 },
           maxZoom: 15,
           duration: 1000,
         });
       }
+
+      // Apply styles immediately after sources/layers are ready
+      applyStyles();
     };
 
     if (mapLoadedRef.current) {
       updateRoutes();
     } else {
-      // Map not ready yet — store the update to replay on load
       pendingUpdateRef.current = updateRoutes;
     }
 
     return () => {
       pendingUpdateRef.current = null;
     };
-  }, [routes]);
-
-  // Update route styles based on selected route
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !mapLoadedRef.current) return;
-
-    const updateStyles = () => {
-      routes.forEach((_, i) => {
-        const layerId = `route-${i}`;
-        if (map.getLayer(layerId)) {
-          map.setPaintProperty(
-            layerId,
-            "line-color",
-            i === selectedRouteIndex ? "#2bee6c" : "#94a3b8"
-          );
-          map.setPaintProperty(
-            layerId,
-            "line-width",
-            i === selectedRouteIndex ? 6 : 4
-          );
-          map.setPaintProperty(
-            layerId,
-            "line-opacity",
-            i === selectedRouteIndex ? 1 : 0.6
-          );
-        }
-      });
-    };
-
-    // Use requestAnimationFrame to ensure layer updates from the routes
-    // effect have been applied before we try to restyle them
-    const raf = requestAnimationFrame(() => {
-      if (map.isStyleLoaded()) {
-        updateStyles();
-      } else {
-        map.once("styledata", updateStyles);
-      }
-    });
-
-    return () => {
-      cancelAnimationFrame(raf);
-      map.off("styledata", updateStyles);
-    };
-  }, [selectedRouteIndex, routes]);
+  }, [routes, selectedRouteIndex]);
 
   // Add markers for source and destination
   useEffect(() => {
