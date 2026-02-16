@@ -46,12 +46,12 @@ export default function Team() {
           {contributors.map((member) => (
             <div
               key={member.username}
-              className="group relative rounded-3xl border border-slate-100 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900"
+              className="group relative flex flex-col rounded-3xl border border-slate-100 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900"
             >
               <div className="absolute inset-x-0 top-0 h-24 rounded-t-3xl bg-linear-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20"></div>
 
-              <div className="relative mt-8 flex flex-col items-center text-center">
-                <div className="relative mb-4 rounded-full bg-white p-1 dark:bg-slate-900">
+              <div className="relative mt-6 flex flex-1 flex-col items-center text-center">
+                <div className="relative mb-5 rounded-full bg-white p-1 dark:bg-slate-900">
                   <div className="h-24 w-24 overflow-hidden rounded-full">
                     <Image
                       src={member.avatar}
@@ -69,22 +69,20 @@ export default function Team() {
                 <h3 className="text-xl font-bold text-slate-900 dark:text-white">
                   {member.username}
                 </h3>
-                <div className="text-bc-primary mb-4 text-sm font-semibold">
+                <div className="text-bc-primary mb-3 text-sm font-semibold">
                   {member.role}
                 </div>
-                <p className="mb-6 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                <p className="mb-8 flex-1 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
                   {member.bio}
                 </p>
 
-                <div className="mt-auto flex gap-3">
-                  <Link
-                    href={member.github}
-                    target="_blank"
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-100 px-2 py-2.5 text-sm font-bold text-slate-900 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
-                  >
-                    <Github className="h-4 w-4" /> Github
-                  </Link>
-                </div>
+                <Link
+                  href={member.github}
+                  target="_blank"
+                  className="inline-flex items-center gap-2 rounded-full bg-gradient-to-b from-slate-800 to-slate-950 px-6 py-2.5 text-sm font-bold text-white shadow-[0_4px_0_0_#0f172a,0_6px_12px_rgba(0,0,0,0.15)] transition-all duration-150 hover:translate-y-[2px] hover:shadow-[0_2px_0_0_#0f172a,0_4px_8px_rgba(0,0,0,0.15)] active:translate-y-[3px] active:shadow-[0_1px_0_0_#0f172a,0_2px_4px_rgba(0,0,0,0.15)] dark:from-slate-600 dark:to-slate-700 dark:shadow-[0_4px_0_0_#1e293b,0_6px_12px_rgba(0,0,0,0.3)] dark:hover:shadow-[0_2px_0_0_#1e293b,0_4px_8px_rgba(0,0,0,0.3)] dark:active:shadow-[0_1px_0_0_#1e293b,0_2px_4px_rgba(0,0,0,0.3)]"
+                >
+                  <Github className="h-4 w-4" /> View Profile
+                </Link>
               </div>
             </div>
           ))}

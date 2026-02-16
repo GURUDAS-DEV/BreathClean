@@ -86,7 +86,7 @@ export default function Navbar() {
             Team
           </Link>
           <Link
-            className="bg-bc-primary hover:shadow-bc-primary/20 rounded-full px-6 py-2.5 font-bold text-white transition-all hover:shadow-lg active:scale-95"
+            className="rounded-full bg-gradient-to-b from-emerald-400 to-emerald-600 px-6 py-2.5 font-bold text-white shadow-[0_4px_0_0_#166534,0_6px_12px_rgba(0,0,0,0.15)] transition-all duration-150 hover:translate-y-[2px] hover:shadow-[0_2px_0_0_#166534,0_4px_8px_rgba(0,0,0,0.15)] active:translate-y-[3px] active:shadow-[0_1px_0_0_#166534,0_2px_4px_rgba(0,0,0,0.15)]"
             href="/login"
           >
             Login
@@ -129,7 +129,7 @@ export default function Navbar() {
               Team
             </Link>
             <Link
-              className="bg-bc-primary hover:shadow-bc-primary/20 rounded-full px-6 py-3 text-center font-bold text-white transition-all hover:shadow-lg active:scale-95"
+              className="rounded-full bg-gradient-to-b from-emerald-400 to-emerald-600 px-6 py-3 text-center font-bold text-white shadow-[0_4px_0_0_#166534,0_6px_12px_rgba(0,0,0,0.15)] transition-all duration-150 hover:translate-y-[2px] hover:shadow-[0_2px_0_0_#166534,0_4px_8px_rgba(0,0,0,0.15)] active:translate-y-[3px] active:shadow-[0_1px_0_0_#166534,0_2px_4px_rgba(0,0,0,0.15)]"
               href="/login"
               onClick={() => setOpen(false)}
             >
