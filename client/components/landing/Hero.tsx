@@ -37,11 +37,11 @@ export default function Hero() {
           <div className="flex flex-col gap-4 sm:flex-row">
             <Link
               href="/login"
-              className="bg-bc-primary hover:shadow-bc-primary/30 flex items-center justify-center gap-2 rounded-full px-8 py-4 text-lg font-bold text-white transition-all hover:shadow-xl active:scale-95"
+              className="flex items-center justify-center gap-2 rounded-full bg-gradient-to-b from-emerald-400 to-emerald-600 px-8 py-4 text-lg font-bold text-white shadow-[0_6px_0_0_#166534,0_8px_16px_rgba(0,0,0,0.2)] transition-all duration-150 hover:translate-y-[2px] hover:shadow-[0_4px_0_0_#166534,0_6px_12px_rgba(0,0,0,0.2)] active:translate-y-[5px] active:shadow-[0_1px_0_0_#166534,0_2px_4px_rgba(0,0,0,0.2)]"
             >
               Start Now <ExternalLink className="h-5 w-5" />
             </Link>
-            <button className="flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-8 py-4 text-lg font-bold transition-all hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700">
+            <button className="flex cursor-pointer items-center justify-center gap-2 rounded-full bg-gradient-to-b from-white to-slate-100 px-8 py-4 text-lg font-bold shadow-[0_6px_0_0_#cbd5e1,0_8px_16px_rgba(0,0,0,0.1)] transition-all duration-150 hover:translate-y-[2px] hover:shadow-[0_4px_0_0_#cbd5e1,0_6px_12px_rgba(0,0,0,0.1)] active:translate-y-[5px] active:shadow-[0_1px_0_0_#cbd5e1,0_2px_4px_rgba(0,0,0,0.1)] dark:from-slate-700 dark:to-slate-800 dark:text-white dark:shadow-[0_6px_0_0_#1e293b,0_8px_16px_rgba(0,0,0,0.3)] dark:hover:shadow-[0_4px_0_0_#1e293b,0_6px_12px_rgba(0,0,0,0.3)] dark:active:shadow-[0_1px_0_0_#1e293b,0_2px_4px_rgba(0,0,0,0.3)]">
               <PlayCircle className="h-5 w-5" /> Watch Demo
             </button>
           </div>

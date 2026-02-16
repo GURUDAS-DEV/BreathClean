@@ -24,7 +24,7 @@ export default function CTA() {
               <div className="pt-4">
                 <Link
                   href="/login"
-                  className="bg-bc-primary hover:shadow-bc-primary/40 flex w-fit items-center gap-3 rounded-full px-10 py-5 text-lg font-bold text-white transition-all hover:shadow-2xl active:scale-95"
+                  className="flex w-fit items-center gap-3 rounded-full bg-gradient-to-b from-emerald-400 to-emerald-600 px-10 py-5 text-lg font-bold text-white shadow-[0_6px_0_0_#166534,0_8px_16px_rgba(0,0,0,0.3)] transition-all duration-150 hover:translate-y-[2px] hover:shadow-[0_4px_0_0_#166534,0_6px_12px_rgba(0,0,0,0.3)] active:translate-y-[5px] active:shadow-[0_1px_0_0_#166534,0_2px_4px_rgba(0,0,0,0.3)]"
                 >
                   <Rocket className="h-5 w-5" /> Try the Web App
                 </Link>
@@ -46,7 +46,7 @@ export default function CTA() {
                   <Image
                     alt="Web Application Dashboard"
                     className="h-auto w-full opacity-90"
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDrOH9Pt8iPwhgUOhryCBcNqAv17vKjTWZDt4bm2PN5VnUnLJ6Un1hebaRnesSvmWVzl47b2TeoLOBeZf-f6STvwERjf-w0GQ7FfpkvzLh0ANtRQ_CWet3eRhTW_huLXLPLUIV8lPjRtQgu5vcUtTpfyQzN_hQesQU2Xf5V517YJfgnk6xPCD13_EnVk40wN8qbCcNG3_0wRHmgQxuzNbWx89LcEVlEB1b7EPwlU7lKmoroeWL90q8fqTctWm7muT54B2wMFzv5s1HV"
+                    src="/phone_ui.webp"
                     width={600}
                     height={400}
                   />

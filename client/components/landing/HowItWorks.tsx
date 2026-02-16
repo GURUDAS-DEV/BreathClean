@@ -1,4 +1,14 @@
-import { Bell, MapPin, Navigation, Zap } from "lucide-react";
+import Image from "next/image";
+
+import {
+  Bell,
+  Cloud,
+  MapPin,
+  Navigation,
+  Shield,
+  Wind,
+  Zap,
+} from "lucide-react";
 
 const steps = [
   {
@@ -85,32 +95,88 @@ export default function HowItWorks() {
         </div>
 
         {/* Visual Flow Section */}
-        <div className="mx-auto max-w-7xl text-center">
-          <h3 className="mb-12 text-2xl font-bold text-slate-900 dark:text-white">
-            Seamless Integration
-          </h3>
-          <div className="relative mx-auto max-w-4xl rounded-3xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-800 dark:bg-slate-900">
-            <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800">
-              <div className="absolute inset-0 grid grid-cols-3 gap-4 p-8 opacity-50">
-                <div className="animate-pulse rounded-xl bg-slate-200/50 dark:bg-slate-700/50"></div>
-                <div className="animate-pulse rounded-xl bg-slate-200/50 delay-75 dark:bg-slate-700/50"></div>
-                <div className="animate-pulse rounded-xl bg-slate-200/50 delay-150 dark:bg-slate-700/50"></div>
-              </div>
-              <div className="relative z-10 flex flex-col items-center gap-4">
-                <div className="flex gap-4">
-                  <div className="flex items-center gap-2 rounded-2xl bg-white p-4 shadow-lg dark:bg-slate-800">
-                    <MapPin className="h-5 w-5 text-blue-500" />{" "}
-                    <span className="text-sm font-bold">Start</span>
+        <div className="mx-auto max-w-7xl">
+          <div className="mx-auto mb-12 max-w-3xl text-center">
+            <h3 className="mb-4 text-2xl font-bold text-slate-900 md:text-3xl dark:text-white">
+              Real-Time Data,{" "}
+              <span className="text-bc-primary">Smarter Routes</span>
+            </h3>
+            <p className="text-lg text-slate-600 dark:text-slate-400">
+              We pull live air quality, weather, and traffic data along every
+              route segment to give you an accurate Health Score before you step
+              outside.
+            </p>
+          </div>
+
+          <div className="grid items-center gap-12 lg:grid-cols-2">
+            {/* Data sources */}
+            <div className="space-y-6">
+              {[
+                {
+                  icon: Wind,
+                  title: "Air Quality Index (AQI)",
+                  description:
+                    "Live AQI and PM2.5 readings sampled at multiple breakpoints along your route, powered by the AQICN network.",
+                  color: "text-red-500",
+                  bg: "bg-red-50 dark:bg-red-900/20",
+                },
+                {
+                  icon: Cloud,
+                  title: "Weather Conditions",
+                  description:
+                    "Real-time temperature, humidity, and wind data from OpenWeather to factor in how weather affects pollutant dispersion.",
+                  color: "text-sky-500",
+                  bg: "bg-sky-50 dark:bg-sky-900/20",
+                },
+                {
+                  icon: Navigation,
+                  title: "Traffic & Distance",
+                  description:
+                    "Mapbox-powered routing with live traffic data ensures your Health Score accounts for time spent in congested zones.",
+                  color: "text-amber-500",
+                  bg: "bg-amber-50 dark:bg-amber-900/20",
+                },
+                {
+                  icon: Shield,
+                  title: "Weighted Health Score",
+                  description:
+                    "Each route is scored using a weighted formula — 40% weather, 30% AQI, 30% traffic — so you always pick the cleanest path.",
+                  color: "text-bc-primary",
+                  bg: "bg-emerald-50 dark:bg-emerald-900/20",
+                },
+              ].map((item, index) => (
+                <div
+                  key={index}
+                  className="flex gap-4 rounded-2xl border border-slate-100 bg-white p-5 transition-all duration-300 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900/50"
+                >
+                  <div
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${item.bg} ${item.color}`}
+                  >
+                    <item.icon className="h-6 w-6" />
                   </div>
-                  <div className="h-0.5 w-12 self-center bg-slate-300"></div>
-                  <div className="flex items-center gap-2 rounded-2xl bg-white p-4 shadow-lg dark:bg-slate-800">
-                    <Navigation className="text-bc-primary h-5 w-5" />{" "}
-                    <span className="text-sm font-bold">Finish</span>
+                  <div>
+                    <h4 className="mb-1 font-bold text-slate-900 dark:text-white">
+                      {item.title}
+                    </h4>
+                    <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                      {item.description}
+                    </p>
                   </div>
                 </div>
-                <div className="bg-bc-primary shadow-bc-primary/20 flex items-center gap-2 rounded-full px-6 py-2 text-sm font-bold text-white shadow-lg">
-                  <Zap className="h-4 w-4" /> Calculating Cleanest Route...
-                </div>
+              ))}
+            </div>
+
+            {/* App preview */}
+            <div className="relative mx-auto max-w-sm">
+              <div className="absolute -inset-4 rounded-[2.5rem] bg-gradient-to-br from-emerald-200/40 via-transparent to-sky-200/40 blur-2xl dark:from-emerald-900/20 dark:to-sky-900/20" />
+              <div className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                <Image
+                  src="/phone_ui.webp"
+                  alt="BreathClean app showing route comparison with Health Scores"
+                  width={400}
+                  height={800}
+                  className="h-auto w-full"
+                />
               </div>
             </div>
           </div>
