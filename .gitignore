@@ -41,3 +41,5 @@ next-env.d.ts
 .claude
 client/API_SCORING_GUIDE.md
 server/BREAKPOINT_API.md
+
+CLAUDE.md
