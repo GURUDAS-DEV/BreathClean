@@ -75,6 +75,7 @@ const RouteContent = () => {
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
   const [routeName, setRouteName] = useState("");
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [searchId, setSearchId] = useState<string | null>(null);
   const saveInputRef = useRef<HTMLInputElement>(null);
 
   // Parse query parameters
@@ -170,6 +171,12 @@ const RouteContent = () => {
       }
 
       const data = await response.json();
+
+      // Capture the searchId for later use in saving
+      if (data.searchId) {
+        setSearchId(data.searchId);
+      }
+
       const scoredRoutes = data.data?.routes;
       if (scoredRoutes && Array.isArray(scoredRoutes)) {
         const scores = scoredRoutes.map(
@@ -393,6 +400,7 @@ const RouteContent = () => {
     try {
       const payload = {
         name: nameToSave,
+        searchId, // Include the searchId from the computation
         from: {
           address: sourceAddress,
           location: {

@@ -1,7 +1,14 @@
+"""
+URL configuration for the api app.
+"""
 from django.urls import path
-from django.http import HttpResponse
-from api import views
+from . import views
 
 urlpatterns = [
-   path('myRoute', views.myRoute)
+    # Health check
+    path('health/', views.health_check, name='health_check'),
+    
+    # Score computation endpoints
+    path('compute-scores/', views.compute_scores, name='compute_scores'),
+    path('compute-score/', views.compute_single_score, name='compute_single_score'),
 ]

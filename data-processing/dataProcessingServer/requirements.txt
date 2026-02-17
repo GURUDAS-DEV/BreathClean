@@ -1,0 +1,25 @@
+# BreathClean Data Processing Server Requirements
+
+# Django
+Django>=4.2,<5.0
+
+# Pathway - Real-time data processing framework
+pathway>=0.8.0
+
+# For JSON handling (included in Python stdlib, but explicit)
+# json - stdlib
+
+# Optional: For async support
+# uvicorn>=0.24.0
+# gunicorn>=21.0.0
+
+# Optional: For database connections (if connecting directly to MongoDB)
+# pymongo>=4.6.0
+# motor>=3.3.0  # Async MongoDB driver
+
+# Optional: For Redis caching
+# redis>=5.0.0
+
+# Development
+# pytest>=7.4.0
+# pytest-django>=4.5.0
