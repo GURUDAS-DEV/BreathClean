@@ -73,16 +73,16 @@ def compute_scores(request):
         use_pathway = body.get("usePathway", False)
 
         # Validation
-        if not routes:
-            return JsonResponse({
-                "success": False,
-                "message": "No routes provided. 'routes' array is required."
-            }, status=400)
-
         if not isinstance(routes, list):
             return JsonResponse({
                 "success": False,
                 "message": "'routes' must be an array."
+            }, status=400)
+
+        if not routes:
+            return JsonResponse({
+                "success": False,
+                "message": "No routes provided. 'routes' array is required."
             }, status=400)
 
         if len(routes) > 10:
@@ -112,11 +112,11 @@ def compute_scores(request):
         else:
             return JsonResponse(result, status=500)
 
-    except Exception as e:
+    except Exception:
         traceback.print_exc()
         return JsonResponse({
             "success": False,
-            "message": f"Internal server error: {str(e)}"
+            "message": "Internal server error"
         }, status=500)
 
 
@@ -172,11 +172,11 @@ def compute_single_score(request):
             "route": result
         }, status=200)
 
-    except Exception as e:
+    except Exception:
         traceback.print_exc()
         return JsonResponse({
             "success": False,
-            "message": f"Internal server error: {str(e)}"
+            "message": "Internal server error"
         }, status=500)
 
 

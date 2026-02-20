@@ -168,6 +168,9 @@ export const deleteRoute = async (
       return;
     }
 
+    // Cascade-delete associated breakpoints
+    await BreakPoint.deleteMany({ routeId: route._id });
+
     res.status(200).json({ success: true, message: "Route deleted" });
   } catch (error) {
     console.error("deleteRoute error:", error);

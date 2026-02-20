@@ -36,7 +36,6 @@ const breakPointSchema = new Schema<IBreakPoint>(
       type: Schema.Types.ObjectId,
       ref: "Route",
       required: true,
-      index: true,
     },
     routeOptionIndex: {
       type: Number,

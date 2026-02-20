@@ -63,6 +63,11 @@ def calculate_weather_score(weather_points: List[Dict[str, Any]]) -> Dict[str, A
     total_pressure = 0.0
     valid_points = 0
 
+    # Per-field counters so averages aren't skewed by missing fields
+    temp_count = 0
+    humidity_count = 0
+    pressure_count = 0
+
     raw_temp_sum = 0.0
     raw_humidity_sum = 0.0
     raw_pressure_sum = 0.0
@@ -77,12 +82,15 @@ def calculate_weather_score(weather_points: List[Dict[str, Any]]) -> Dict[str, A
             if temp is not None:
                 total_temp += calculate_temperature_score(temp)
                 raw_temp_sum += temp
+                temp_count += 1
             if humidity is not None:
                 total_humidity += calculate_humidity_score(humidity)
                 raw_humidity_sum += humidity
+                humidity_count += 1
             if pressure is not None:
                 total_pressure += calculate_pressure_score(pressure)
                 raw_pressure_sum += pressure
+                pressure_count += 1
 
             valid_points += 1
 
@@ -95,9 +103,9 @@ def calculate_weather_score(weather_points: List[Dict[str, Any]]) -> Dict[str, A
             "details": None
         }
 
-    temp_score = total_temp / valid_points
-    humidity_score = total_humidity / valid_points
-    pressure_score = total_pressure / valid_points
+    temp_score = total_temp / temp_count if temp_count > 0 else 0.0
+    humidity_score = total_humidity / humidity_count if humidity_count > 0 else 0.0
+    pressure_score = total_pressure / pressure_count if pressure_count > 0 else 0.0
 
     # Overall weather score (weighted average)
     # Temperature is most perceptible to humans, so higher weight
@@ -109,9 +117,9 @@ def calculate_weather_score(weather_points: List[Dict[str, Any]]) -> Dict[str, A
         "pressure": round(pressure_score, 1),
         "overall": round(overall, 1),
         "details": {
-            "avgTemp": round(raw_temp_sum / valid_points, 1),
-            "avgHumidity": round(raw_humidity_sum / valid_points, 1),
-            "avgPressure": round(raw_pressure_sum / valid_points, 1)
+            "avgTemp": round(raw_temp_sum / temp_count, 1) if temp_count > 0 else None,
+            "avgHumidity": round(raw_humidity_sum / humidity_count, 1) if humidity_count > 0 else None,
+            "avgPressure": round(raw_pressure_sum / pressure_count, 1) if pressure_count > 0 else None
         }
     }
 

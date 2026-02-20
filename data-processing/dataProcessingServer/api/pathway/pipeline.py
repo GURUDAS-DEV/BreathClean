@@ -266,7 +266,17 @@ def create_streaming_pipeline(input_connector, output_connector):
     
     This is for future use when we want real-time streaming updates
     instead of batch processing.
+    
+    Raises:
+        RuntimeError: If Pathway is not available (e.g., on Windows).
     """
+    if not PATHWAY_AVAILABLE or pw is None:
+        raise RuntimeError(
+            "Pathway is not available. Streaming pipeline requires Pathway "
+            "(Linux only). Use run_simple_batch() as a fallback or run in "
+            "Docker/WSL."
+        )
+
     # Read from input connector
     input_table = pw.io.jsonlines.read(
         input_connector,

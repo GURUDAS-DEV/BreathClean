@@ -1,10 +1,13 @@
 # BreathClean Data Processing Server Requirements
 
-# Django
-Django>=4.2,<5.0
+# Django (must match version referenced in settings.py — Django 6.0.2)
+Django>=6.0,<7.0
 
 # Pathway - Real-time data processing framework
 pathway>=0.8.0
+
+# Pin urllib3 to a patched release to avoid known vulnerabilities
+urllib3>=2.6.0,<3.0
 
 # For JSON handling (included in Python stdlib, but explicit)
 # json - stdlib

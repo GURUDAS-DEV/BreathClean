@@ -10,22 +10,49 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
+# ---------------------------------------------------------------------------
+# Security settings — driven by environment variables.
+#
+# Required in production:
+#   DJANGO_SECRET_KEY  — a long, random secret key
+#
+# Optional (have sensible dev defaults):
+#   DJANGO_DEBUG           — set to "False" / "0" to disable debug mode
+#   DJANGO_ALLOWED_HOSTS   — comma-separated list of allowed hostnames
+# ---------------------------------------------------------------------------
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-&o^m3_*@exw4xx1*mc!9nzy7tpj4zjp%11gf-ag_7!lx+gvxpt'
+# Detect whether we are running in development mode: if no explicit secret
+# key is provided via the environment, we fall back to an insecure default
+# and treat the environment as development.
+_SECRET_KEY_ENV = os.getenv('DJANGO_SECRET_KEY')
+_IS_DEV = _SECRET_KEY_ENV is None
+
+if _IS_DEV:
+    # Development-only fallback — NEVER use this in production.
+    SECRET_KEY = 'django-insecure-dev-only-key-do-not-use-in-production'
+else:
+    SECRET_KEY = _SECRET_KEY_ENV
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+_debug_env = os.getenv('DJANGO_DEBUG')
+if _debug_env is not None:
+    DEBUG = _debug_env.lower() in ('true', '1', 'yes')
+else:
+    # Default to True only in development.
+    DEBUG = _IS_DEV
 
-ALLOWED_HOSTS = []
+# ALLOWED_HOSTS — populated from a comma-separated env var, or empty in dev.
+_allowed_hosts_env = os.getenv('DJANGO_ALLOWED_HOSTS', '')
+ALLOWED_HOSTS = [
+    h.strip() for h in _allowed_hosts_env.split(',') if h.strip()
+] if _allowed_hosts_env else []
 
 
 # Application definition
@@ -37,6 +64,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'api',
 ]
 
 MIDDLEWARE = [

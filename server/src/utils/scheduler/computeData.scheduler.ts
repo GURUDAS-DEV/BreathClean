@@ -267,9 +267,24 @@ export async function runBatchScoring(): Promise<void> {
 /**
  * Initialize the cron scheduler
  */
+let _isRunning = false;
+
 export function initScheduler(): void {
   cron.schedule(CRON_SCHEDULE, async () => {
-    await runBatchScoring();
+    if (_isRunning) {
+      console.info(
+        "[Scheduler] Previous batch still running — skipping this tick"
+      );
+      return;
+    }
+    _isRunning = true;
+    try {
+      await runBatchScoring();
+    } catch (error) {
+      console.error("[Scheduler] Unhandled error in batch scoring:", error);
+    } finally {
+      _isRunning = false;
+    }
   });
 }
 

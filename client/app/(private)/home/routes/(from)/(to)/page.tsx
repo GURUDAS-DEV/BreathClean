@@ -201,7 +201,7 @@ const RouteContent = () => {
         let bestDuration = Infinity;
         overallScores.forEach((score: number, i: number) => {
           const dur =
-            routes[i]?.trafficDuration ?? routes[i]?.duration ?? Infinity;
+            routeData[i]?.trafficDuration ?? routeData[i]?.duration ?? Infinity;
           if (
             score > overallScores[bestIndex] ||
             (score === overallScores[bestIndex] && dur < bestDuration)
@@ -419,8 +419,7 @@ const RouteContent = () => {
           distance: route.distance / 1000,
           duration: route.duration / 60,
           routeGeometry: route.geometry,
-          lastComputedScore:
-            route.overallScore || Math.floor(Math.random() * 100),
+          lastComputedScore: route.overallScore ?? null,
           lastComputedAt: new Date(),
           travelMode: selectedMode,
         })),

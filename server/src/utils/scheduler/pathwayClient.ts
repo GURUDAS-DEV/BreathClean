@@ -177,9 +177,16 @@ export async function sendToPathway(
  */
 export async function checkPathwayHealth(baseUrl: string): Promise<boolean> {
   const url = `${baseUrl}/api/health/`;
+  const timeout = 30000;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
-    const response = await fetch(url, { method: "GET" });
+    const response = await fetch(url, {
+      method: "GET",
+      signal: controller.signal,
+    });
     if (response.ok) {
       const data = await response.json();
       console.log(
@@ -192,8 +199,14 @@ export async function checkPathwayHealth(baseUrl: string): Promise<boolean> {
     );
     return false;
   } catch (error) {
-    console.error(`[PathwayClient] Health check error:`, error);
+    if (error instanceof Error && error.name === "AbortError") {
+      console.error("[PathwayClient] Health check timed out");
+    } else {
+      console.error(`[PathwayClient] Health check error:`, error);
+    }
     return false;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
