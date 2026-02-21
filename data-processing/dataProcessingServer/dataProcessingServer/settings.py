@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -48,17 +49,35 @@ else:
     # Default to True only in development.
     DEBUG = _IS_DEV
 
-# ALLOWED_HOSTS — populated from a comma-separated env var.
-# On Render, when not explicitly set, fall back to the provided external hostname.
-_allowed_hosts_env = os.getenv('DJANGO_ALLOWED_HOSTS', '')
-_render_external_hostname = os.getenv('RENDER_EXTERNAL_HOSTNAME', '').strip()
+def _normalize_host(value: str) -> str:
+    host = (value or '').strip()
+    if not host:
+        return ''
+    if '://' in host:
+        host = (urlparse(host).hostname or '').strip()
+    else:
+        host = host.split('/')[0].split(':')[0].strip()
+    return host.lower()
 
-if _allowed_hosts_env:
-    ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(',') if h.strip()]
-elif _render_external_hostname:
-    ALLOWED_HOSTS = [_render_external_hostname, 'localhost', '127.0.0.1']
+
+# ALLOWED_HOSTS — accepts comma-separated values (hosts or URLs).
+# Render fallback accepts onrender hostnames when no explicit env is provided.
+_allowed_hosts_env = os.getenv('DJANGO_ALLOWED_HOSTS', '')
+_allowed_hosts_from_env = [
+    _normalize_host(item) for item in _allowed_hosts_env.split(',') if item.strip()
+]
+
+_render_host_candidates = [
+    os.getenv('RENDER_EXTERNAL_HOSTNAME', ''),
+    os.getenv('RENDER_EXTERNAL_URL', ''),
+    os.getenv('RENDER_SERVICE_NAME', ''),
+]
+_render_hosts = [h for h in (_normalize_host(candidate) for candidate in _render_host_candidates) if h]
+
+if _allowed_hosts_from_env:
+    ALLOWED_HOSTS = _allowed_hosts_from_env
 else:
-    ALLOWED_HOSTS = []
+    ALLOWED_HOSTS = _render_hosts + ['.onrender.com', 'localhost', '127.0.0.1']
 
 
 # Application definition
