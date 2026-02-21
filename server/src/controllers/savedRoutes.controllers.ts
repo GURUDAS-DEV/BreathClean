@@ -77,16 +77,24 @@ export const saveRoute = async (req: Request, res: Response): Promise<void> => {
 
     // Try to get from Cache first
     if (searchId) {
-      try {
-        const cached = (await redis.get(`route_search:${searchId}`)) as {
-          breakpoints: RouteBreakpoints[];
-        } | null;
-        // Upstash Redis usually returns the object directly if stored as JSON
-        if (cached && cached.breakpoints) {
-          routeBreakpointsData = cached.breakpoints;
+      // Validate searchId format to prevent cache-key injection (expecting UUID)
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9-a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+      if (typeof searchId === "string" && uuidRegex.test(searchId)) {
+        try {
+          const cached = (await redis.get(`route_search:${searchId}`)) as {
+            breakpoints: RouteBreakpoints[];
+          } | null;
+          // Upstash Redis usually returns the object directly if stored as JSON
+          if (cached && cached.breakpoints) {
+            routeBreakpointsData = cached.breakpoints;
+          }
+        } catch {
+          console.warn("[Cache] Redis get failed for validated searchId.");
         }
-      } catch (err) {
-        console.warn("[Cache] Redis get failed:", err);
+      } else {
+        console.warn("[Cache] Ignored invalid searchId format.");
       }
     }
 
@@ -118,7 +126,9 @@ export const saveRoute = async (req: Request, res: Response): Promise<void> => {
               if (parts.length < 2) return;
               const idxStr = parts[1];
               if (!idxStr) return;
-              const pointIndex = parseInt(idxStr) - 1; // 1-based to 0-based
+              const pointIndex = parseInt(idxStr, 10) - 1; // 1-based to 0-based
+              if (Number.isNaN(pointIndex)) return;
+
               const coord = rb[key]; // { lat, lon }
 
               if (coord) {

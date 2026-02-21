@@ -12,6 +12,9 @@ uses direct Python computation. For production, run in Docker/WSL.
 """
 from typing import List, Dict, Any, Optional
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Try to import Pathway - gracefully handle if not available (Windows)
 PATHWAY_AVAILABLE = False
@@ -62,9 +65,14 @@ def process_route_row(
     """
     try:
         weather_data = json.loads(weather_points) if weather_points else []
-        aqi_data = json.loads(aqi_points) if aqi_points else []
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        logger.warning("Failed to parse weather_points for route: %s", e)
         weather_data = []
+
+    try:
+        aqi_data = json.loads(aqi_points) if aqi_points else []
+    except json.JSONDecodeError as e:
+        logger.warning("Failed to parse aqi_points for route: %s", e)
         aqi_data = []
 
     route_data = {

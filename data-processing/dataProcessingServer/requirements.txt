@@ -4,7 +4,9 @@
 Django>=6.0,<7.0
 
 # Pathway - Real-time data processing framework
-pathway>=0.8.0
+# NOTE: Pathway is licensed under BSL 1.1 with service-use restrictions. 
+# Legal review required: Ensure use case doesn't violate Additional Use Grant.
+pathway>=0.8.0,<1.0
 
 # Pin urllib3 to a patched release to avoid known vulnerabilities
 urllib3>=2.6.0,<3.0

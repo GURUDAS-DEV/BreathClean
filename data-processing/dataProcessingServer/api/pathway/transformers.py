@@ -223,9 +223,9 @@ def calculate_traffic_score(traffic_value: float) -> float:
     Non-linear penalty for congestion.
     
     trafficValue: 0 (clear) to 3 (severe)
-    0.5 (light) -> ~85
-    1.0 (moderate) -> ~65
-    2.0 (heavy) -> ~25
+    0.5 (light) -> ~71.5
+    1.0 (moderate) -> ~53.5
+    2.0 (heavy) -> ~24.7
     3.0 (severe) -> 0
     """
     if traffic_value <= 0:

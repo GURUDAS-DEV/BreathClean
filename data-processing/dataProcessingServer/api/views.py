@@ -156,10 +156,20 @@ def compute_single_score(request):
                 "message": "Invalid JSON in request body"
             }, status=400)
 
-        if not body:
+        if body is None:
             return JsonResponse({
                 "success": False,
                 "message": "Request body is required."
+            }, status=400)
+
+        # Validate required fields for compute_route_score
+        required_fields = ["distance", "duration", "travelMode"]
+        missing_fields = [field for field in required_fields if field not in body]
+
+        if missing_fields:
+            return JsonResponse({
+                "success": False,
+                "message": f"Missing required fields: {', '.join(missing_fields)}"
             }, status=400)
 
         # Import here to avoid circular imports
