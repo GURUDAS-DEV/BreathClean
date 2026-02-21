@@ -1,7 +1,7 @@
 # BreathClean Data Processing Server Requirements
 
 # Django (must match version referenced in settings.py — Django 6.0.2)
-Django==5.2.11
+Django>=6.0,<7.0
 
 # Pathway - Real-time data processing framework
 # NOTE: Pathway is licensed under BSL 1.1 with service-use restrictions. 
@@ -14,11 +14,9 @@ urllib3>=2.6.0,<3.0
 # For JSON handling (included in Python stdlib, but explicit)
 # json - stdlib
 
-# Production server
-gunicorn>=21.0.0
-
 # Optional: For async support
 # uvicorn>=0.24.0
+# gunicorn>=21.0.0
 
 # Optional: For database connections (if connecting directly to MongoDB)
 # pymongo>=4.6.0

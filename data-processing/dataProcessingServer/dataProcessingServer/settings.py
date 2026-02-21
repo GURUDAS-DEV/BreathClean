@@ -48,11 +48,17 @@ else:
     # Default to True only in development.
     DEBUG = _IS_DEV
 
-# ALLOWED_HOSTS — populated from a comma-separated env var, or empty in dev.
+# ALLOWED_HOSTS — populated from a comma-separated env var.
+# On Render, when not explicitly set, fall back to the provided external hostname.
 _allowed_hosts_env = os.getenv('DJANGO_ALLOWED_HOSTS', '')
-ALLOWED_HOSTS = [
-    h.strip() for h in _allowed_hosts_env.split(',') if h.strip()
-] if _allowed_hosts_env else []
+_render_external_hostname = os.getenv('RENDER_EXTERNAL_HOSTNAME', '').strip()
+
+if _allowed_hosts_env:
+    ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(',') if h.strip()]
+elif _render_external_hostname:
+    ALLOWED_HOSTS = [_render_external_hostname, 'localhost', '127.0.0.1']
+else:
+    ALLOWED_HOSTS = []
 
 
 # Application definition
