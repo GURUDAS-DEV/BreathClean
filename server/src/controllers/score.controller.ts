@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { v4 as uuidv4 } from "uuid";
 
 import {
   computeAQI,
@@ -9,6 +10,7 @@ import {
   computeWeather,
   type RouteWeatherResult,
 } from "../utils/compute/weather.compute.js";
+import redis from "../utils/redis.js";
 
 // Type definitions for the request
 interface RouteGeometry {
@@ -483,9 +485,28 @@ export const getScoreController = async (req: Request, res: Response) => {
       current.overallScore > best.overallScore ? current : best
     );
 
+    // --- REDIS CACHING START ---
+    const searchId = uuidv4();
+    try {
+      // Store ONLY raw breakpoints (to save locations later)
+      // TTL: 3600 seconds (1 hour)
+      await redis.set(
+        `route_search:${searchId}`,
+        JSON.stringify({
+          breakpoints,
+          timestamp: new Date().toISOString(),
+        }),
+        { ex: 3600 }
+      );
+    } catch (redisError) {
+      console.error("Redis caching failed (continuing anyway):", redisError);
+    }
+    // --- REDIS CACHING END ---
+
     res.json({
       success: true,
       message: "Route scores computed successfully",
+      searchId, // <--- Return this to client
       data: {
         routes: routeScores,
         bestRoute: {

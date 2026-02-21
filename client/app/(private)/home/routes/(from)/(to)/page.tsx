@@ -75,6 +75,8 @@ const RouteContent = () => {
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
   const [routeName, setRouteName] = useState("");
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [searchId, setSearchId] = useState<string | null>(null);
+  const fetchGenerationRef = useRef(0);
   const saveInputRef = useRef<HTMLInputElement>(null);
 
   // Parse query parameters
@@ -135,7 +137,11 @@ const RouteContent = () => {
   };
 
   // Fetch scores from backend scoring API
-  const fetchScores = async (routeData: RouteData[], mode: TravelMode) => {
+  const fetchScores = async (
+    routeData: RouteData[],
+    mode: TravelMode,
+    generation: number
+  ) => {
     setScoresLoading(true);
     try {
       const payload = {
@@ -170,6 +176,16 @@ const RouteContent = () => {
       }
 
       const data = await response.json();
+
+      // If a newer fetchRoutes was triggered while we were waiting,
+      // discard this stale response entirely.
+      if (generation !== fetchGenerationRef.current) return;
+
+      // Capture the searchId for later use in saving
+      if (data.searchId) {
+        setSearchId(data.searchId);
+      }
+
       const scoredRoutes = data.data?.routes;
       if (scoredRoutes && Array.isArray(scoredRoutes)) {
         const scores = scoredRoutes.map(
@@ -194,7 +210,7 @@ const RouteContent = () => {
         let bestDuration = Infinity;
         overallScores.forEach((score: number, i: number) => {
           const dur =
-            routes[i]?.trafficDuration ?? routes[i]?.duration ?? Infinity;
+            routeData[i]?.trafficDuration ?? routeData[i]?.duration ?? Infinity;
           if (
             score > overallScores[bestIndex] ||
             (score === overallScores[bestIndex] && dur < bestDuration)
@@ -244,6 +260,9 @@ const RouteContent = () => {
         return;
       }
 
+      // Increment generation so any in-flight fetchScores response is ignored
+      const generation = ++fetchGenerationRef.current;
+      setSearchId(null);
       setIsLoading(true);
       setError(null);
 
@@ -339,7 +358,7 @@ const RouteContent = () => {
               };
             });
           setRoutes(fetchedRoutes);
-          fetchScores(fetchedRoutes, mode);
+          fetchScores(fetchedRoutes, mode, generation);
         } else {
           setError("No routes found. Please try different locations.");
           setRoutes([]);
@@ -393,6 +412,7 @@ const RouteContent = () => {
     try {
       const payload = {
         name: nameToSave,
+        searchId, // Include the searchId from the computation
         from: {
           address: sourceAddress,
           location: {
@@ -411,8 +431,7 @@ const RouteContent = () => {
           distance: route.distance / 1000,
           duration: route.duration / 60,
           routeGeometry: route.geometry,
-          lastComputedScore:
-            route.overallScore || Math.floor(Math.random() * 100),
+          lastComputedScore: route.overallScore ?? null,
           lastComputedAt: new Date(),
           travelMode: selectedMode,
         })),
