@@ -1,7 +1,7 @@
 # BreathClean Data Processing Server Requirements
 
 # Django (must match version referenced in settings.py — Django 6.0.2)
-Django>=6.0,<7.0
+Django==5.2.11
 
 # Pathway - Real-time data processing framework
 # NOTE: Pathway is licensed under BSL 1.1 with service-use restrictions. 
