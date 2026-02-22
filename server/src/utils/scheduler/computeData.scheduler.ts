@@ -8,8 +8,6 @@
  * 4. Sends data to Pathway for score computation
  * 5. Updates route documents with new scores
  */
-import cron from "node-cron";
-
 import BreakPoint from "../../Schema/breakPoints.js";
 import Route from "../../Schema/route.schema.js";
 import { computeAQI } from "../compute/aqi.compute.js";
@@ -22,7 +20,10 @@ import { type PathwayRouteInput, sendToPathway } from "./pathwayClient.js";
 // ─── Configuration ────────────────────────────────────────────────────────────
 const PATHWAY_URL = process.env.PATHWAY_URL || "http://localhost:8001";
 const BATCH_SIZE = 5;
-const CRON_SCHEDULE = process.env.CRON_SCHEDULE || "*/30 * * * *";
+// Interval in milliseconds (default: 30 minutes)
+const SCHEDULE_INTERVAL_MS = process.env.SCHEDULE_INTERVAL_MS
+  ? parseInt(process.env.SCHEDULE_INTERVAL_MS, 10)
+  : 30 * 60 * 1000;
 
 // ─── Schema note ──────────────────────────────────────────────────────────────
 // routeOptionSchema stores travelMode as a plain String in MongoDB.
@@ -246,12 +247,12 @@ export async function runBatchScoring(): Promise<void> {
 }
 
 /**
- * Initialize the cron scheduler
+ * Initialize the scheduler using setInterval
  */
 let _isRunning = false;
 
 export function initScheduler(): void {
-  cron.schedule(CRON_SCHEDULE, async () => {
+  setInterval(async () => {
     if (_isRunning) {
       return; // skip — previous batch still in progress
     }
@@ -263,7 +264,7 @@ export function initScheduler(): void {
     } finally {
       _isRunning = false;
     }
-  });
+  }, SCHEDULE_INTERVAL_MS);
 }
 
 /**
