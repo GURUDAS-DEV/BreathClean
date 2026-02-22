@@ -71,6 +71,8 @@ def compute_scores(request):
 
         routes = body.get("routes", [])
         use_pathway = body.get("usePathway", False)
+        
+        print(f"[ComputeScores] Received batch processing request: {len(routes)} routes (Pathway: {use_pathway})")
 
         # Validation
         if not isinstance(routes, list):
@@ -108,8 +110,10 @@ def compute_scores(request):
             result = run_simple_batch(routes)
 
         if result.get("success"):
+            print(f"[ComputeScores] Successfully computed scores for {len(routes)} routes.")
             return JsonResponse(result, status=200)
         else:
+            print(f"[ComputeScores] Failed to compute scores: {result.get('message')}")
             return JsonResponse(result, status=500)
 
     except Exception:
@@ -174,6 +178,8 @@ def compute_single_score(request):
 
         # Import here to avoid circular imports
         from .pathway.transformers import compute_route_score
+        
+        print(f"[ComputeSingleScore] Computing score for route option: {body.get('routeId', 'unknown')} (Index: {body.get('routeIndex', 'unknown')})")
 
         result = compute_route_score(body)
 
@@ -197,6 +203,7 @@ def health_check(request):
     
     Endpoint: GET /api/health/
     """
+    print("[HealthCheck] Health check endpoint called.")
     return JsonResponse({
         "status": "healthy",
         "service": "BreathClean Data Processing Server",
