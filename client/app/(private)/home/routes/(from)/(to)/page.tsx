@@ -11,7 +11,9 @@ import InsightToast from "@/components/routes/InsightToast";
 import MapControls from "@/components/routes/MapControls";
 import RouteComparisonPanel from "@/components/routes/RouteComparisonPanel";
 import RouteDiscoveryPanel from "@/components/routes/RouteDiscoveryPanel";
-import RouteMapBackground from "@/components/routes/RouteMapBackground";
+import RouteMapBackground, {
+  type RouteMapHandle,
+} from "@/components/routes/RouteMapBackground";
 
 // Types
 type Coordinates = {
@@ -63,6 +65,7 @@ if (!MAPBOX_TOKEN) {
 
 const RouteContent = () => {
   const searchParams = useSearchParams();
+  const mapHandleRef = useRef<RouteMapHandle>(null);
   const [source, setSource] = useState<Coordinates | null>(null);
   const [destination, setDestination] = useState<Coordinates | null>(null);
   const [sourceAddress, setSourceAddress] = useState<string>("");
@@ -472,6 +475,7 @@ const RouteContent = () => {
     <div className="font-display flex h-screen flex-col overflow-hidden bg-[#f6f8f6] text-slate-900 md:pt-12 dark:bg-[#102216]">
       <main className="relative flex-1 overflow-hidden">
         <RouteMapBackground
+          ref={mapHandleRef}
           source={source}
           destination={destination}
           routes={routes}
@@ -484,6 +488,11 @@ const RouteContent = () => {
           onModeChange={handleModeChange}
           onSaveRoute={handleSaveClick}
           canSave={!isLoading && !error && routes.length > 0}
+          googleMapsUrl={
+            source && destination
+              ? `https://www.google.com/maps/dir/?api=1&origin=${source.lat},${source.lng}&destination=${destination.lat},${destination.lng}&travelmode=${selectedMode === "cycling" ? "bicycling" : selectedMode}`
+              : null
+          }
         />
         <RouteComparisonPanel
           routes={routes}
@@ -495,7 +504,11 @@ const RouteContent = () => {
           onRouteSelect={handleRouteSelect}
         />
         <InsightToast />
-        <MapControls />
+        <MapControls
+          onZoomIn={() => mapHandleRef.current?.zoomIn()}
+          onZoomOut={() => mapHandleRef.current?.zoomOut()}
+          onLocate={() => mapHandleRef.current?.locate()}
+        />
 
         {/* Save Route Modal */}
         {showSaveModal && (

@@ -45,6 +45,7 @@ export default function HomeMap({ className }: HomeMapProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapboxglRef = useRef<any>(null);
   const [showRightModal, setShowRightModal] = useState(true);
+  const [showControls, setShowControls] = useState(true);
   const revealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const markersRef = useRef<{
     source: Marker | null;
@@ -324,19 +325,21 @@ export default function HomeMap({ className }: HomeMapProps) {
         map.on("load", handleMapLoad);
         map.on("error", handleMapError);
 
-        const hideRightModal = () => {
+        const hideControls = () => {
           if (revealTimeoutRef.current) clearTimeout(revealTimeoutRef.current);
           setShowRightModal(false);
+          setShowControls(false);
         };
-        const scheduleShowRightModal = () => {
+        const scheduleShowControls = () => {
           if (revealTimeoutRef.current) clearTimeout(revealTimeoutRef.current);
           revealTimeoutRef.current = setTimeout(() => {
             setShowRightModal(true);
-          }, 1000);
+            setShowControls(true);
+          }, 800);
         };
 
-        map.on("movestart", hideRightModal);
-        map.on("moveend", scheduleShowRightModal);
+        map.on("movestart", hideControls);
+        map.on("moveend", scheduleShowControls);
 
         // Initial Geolocation
         if (navigator.geolocation) {
@@ -395,8 +398,8 @@ export default function HomeMap({ className }: HomeMapProps) {
 
         cleanupRef.current = () => {
           window.removeEventListener("resize", resize);
-          map.off("movestart", hideRightModal);
-          map.off("moveend", scheduleShowRightModal);
+          map.off("movestart", hideControls);
+          map.off("moveend", scheduleShowControls);
           map.off("load", handleMapLoad);
           map.off("error", handleMapError);
           map.remove();
@@ -676,13 +679,15 @@ export default function HomeMap({ className }: HomeMapProps) {
 
         {/* ===== MOBILE LAYOUT (< lg) ===== */}
         <div
-          className={`absolute inset-0 z-20 flex flex-col transition-opacity duration-700 lg:hidden ${shouldShowLoader ? "opacity-0" : "opacity-100"}`}
+          className={`pointer-events-none absolute inset-0 z-20 flex flex-col transition-opacity duration-700 lg:hidden ${shouldShowLoader ? "opacity-0" : "opacity-100"}`}
         >
           {/* Spacer for AppNavbar */}
           <div className="h-14" />
 
           {/* Mobile Floating Map Controls */}
-          <div className="pointer-events-auto absolute top-18 right-4 flex flex-col gap-3">
+          <div
+            className={`pointer-events-auto absolute top-18 right-4 flex flex-col gap-3 transition-opacity duration-300 ${showControls ? "opacity-100" : "pointer-events-none opacity-0"}`}
+          >
             <button
               onClick={() => {
                 mapRef.current?.flyTo({
@@ -723,7 +728,7 @@ export default function HomeMap({ className }: HomeMapProps) {
           {/* Mobile Bottom Sheet — Draggable */}
           <div
             ref={sheetRef}
-            className="pointer-events-auto flex flex-col items-center"
+            className={`pointer-events-auto flex flex-col items-center transition-opacity duration-300 ${showControls ? "opacity-100" : "pointer-events-none opacity-0"}`}
             style={{
               transform: sheetExpanded
                 ? "translateY(0)"
@@ -922,7 +927,9 @@ export default function HomeMap({ className }: HomeMapProps) {
           className={`pointer-events-none absolute inset-0 z-20 mt-10 hidden h-full w-full flex-col items-start gap-6 px-4 pt-16 transition-opacity duration-700 md:pt-3 lg:flex lg:flex-row lg:justify-between lg:px-4 ${shouldShowLoader ? "opacity-0" : "opacity-100"}`}
         >
           {/* Left Section: Search Card */}
-          <div className="pointer-events-auto mt-3 w-full max-w-xs xl:max-w-sm">
+          <div
+            className={`pointer-events-auto mt-3 w-full max-w-xs transition-opacity duration-300 xl:max-w-sm ${showControls ? "opacity-100" : "pointer-events-none opacity-0"}`}
+          >
             <div className="rounded-xl border border-[#2bee6c]/10 bg-white p-6 shadow-2xl shadow-[#2bee6c]/5 dark:bg-slate-900/90">
               <h2 className="mb-1 text-lg font-bold">
                 Start your healthy journey

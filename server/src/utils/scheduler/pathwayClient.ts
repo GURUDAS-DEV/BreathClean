@@ -118,88 +118,63 @@ export async function sendToPathway(
   baseUrl: string,
   routes: PathwayRouteInput[]
 ): Promise<PathwayResponse> {
-  const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
-  const url = `${normalizedBaseUrl}/api/compute-scores/`;
-  const timeout = process.env.PATHWAY_TIMEOUT_MS
-    ? parseInt(process.env.PATHWAY_TIMEOUT_MS, 10)
-    : 90000;
-  const retryCount = process.env.PATHWAY_RETRY_COUNT
-    ? parseInt(process.env.PATHWAY_RETRY_COUNT, 10)
-    : 1;
+  const url = `${baseUrl}/api/compute-scores/`;
+  const timeout = 30000; // 30 second timeout
 
-  for (let attempt = 0; attempt <= retryCount; attempt++) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ routes, usePathway: false }),
-        signal: controller.signal,
-      });
+  console.log(`[PathwayClient] POST ${url} (timeout: ${timeout}ms)`);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(
-          `[PathwayClient] HTTP error ${response.status} (attempt ${attempt + 1}/${retryCount + 1}): ${errorText}`
-        );
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ routes, usePathway: false }),
+      signal: controller.signal,
+    });
 
-        if (response.status >= 500 && attempt < retryCount) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          continue;
-        }
-
-        return {
-          success: false,
-          message: `HTTP ${response.status}: ${errorText}`,
-        };
-      }
-
-      const data = (await response.json()) as PathwayResponse;
-      return data;
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.name === "AbortError") {
-          console.error(
-            `[PathwayClient] Request timed out after ${timeout}ms (attempt ${attempt + 1}/${retryCount + 1})`
-          );
-          if (attempt < retryCount) {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-            continue;
-          }
-          return {
-            success: false,
-            message: "Request timed out",
-          };
-        }
-
-        console.error(`[PathwayClient] Error: ${error.message}`);
-        if (attempt < retryCount) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          continue;
-        }
-        return {
-          success: false,
-          message: error.message,
-        };
-      }
-
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(
+        `[PathwayClient] HTTP ${response.status} from ${url}: ${errorText}`
+      );
       return {
         success: false,
-        message: "Unknown error",
+        message: `HTTP ${response.status}: ${errorText}`,
       };
-    } finally {
-      clearTimeout(timeoutId);
     }
-  }
 
-  return {
-    success: false,
-    message: "Request failed after retries",
-  };
+    const data = (await response.json()) as PathwayResponse;
+    console.log(`[PathwayClient] Success from ${url}`);
+    return data;
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.name === "AbortError") {
+        console.error(
+          `[PathwayClient] Timed out after ${timeout}ms calling ${url}`
+        );
+        return { success: false, message: "Request timed out" };
+      }
+      const cause = (error as NodeJS.ErrnoException).cause;
+      console.error(
+        `[PathwayClient] Fetch failed for ${url} — ${error.message}`,
+        cause instanceof Error
+          ? {
+              code: (cause as NodeJS.ErrnoException).code,
+              cause: cause.message,
+            }
+          : cause
+      );
+      return { success: false, message: error.message };
+    }
+    console.error(`[PathwayClient] Unknown error calling ${url}:`, error);
+    return { success: false, message: "Unknown error" };
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 /**

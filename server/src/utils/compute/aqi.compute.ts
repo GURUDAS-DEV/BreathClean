@@ -67,66 +67,80 @@ export interface RouteAQIResult {
   successfulFetches: number;
 }
 
+const AQI_TIMEOUT_MS = 5000;
+const AQI_MAX_RETRIES = 2;
+
 /**
- * Fetches AQI data for a single coordinate point using AQICN API
- * Returns AQI data or null if fetch fails
+ * Fetches AQI data for a single coordinate point using AQICN API.
+ * Retries up to AQI_MAX_RETRIES times on network failures.
+ * Returns AQI data or null if all attempts fail.
  */
 async function fetchAQIForPoint(
   lat: number,
   lon: number
 ): Promise<AQIData | null> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+  for (let attempt = 0; attempt <= AQI_MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), AQI_TIMEOUT_MS);
 
-  try {
-    // AQICN API endpoint for geo-located data
-    const response = await fetch(
-      `https://api.waqi.info/feed/geo:${lat};${lon}/?token=${process.env.AQI_API_KEY}`,
-      { signal: controller.signal }
-    );
-
-    if (!response.ok) {
-      console.error(`AQI API error for (${lat}, ${lon}): ${response.status}`);
-      return null;
-    }
-
-    const apiResponse = (await response.json()) as AQIAPIResponse;
-
-    // Check if the API returned valid data
-    if (apiResponse.status !== "ok" || !apiResponse.data) {
-      console.error(
-        `AQI API returned invalid status for (${lat}, ${lon}):`,
-        apiResponse.status
+    try {
+      const response = await fetch(
+        `https://api.waqi.info/feed/geo:${lat};${lon}/?token=${process.env.AQI_API_KEY}`,
+        { signal: controller.signal }
       );
-      return null;
+
+      if (!response.ok) {
+        console.error(`AQI API error for (${lat}, ${lon}): ${response.status}`);
+        return null;
+      }
+
+      const apiResponse = (await response.json()) as AQIAPIResponse;
+
+      if (apiResponse.status !== "ok" || !apiResponse.data) {
+        console.error(
+          `AQI API returned invalid status for (${lat}, ${lon}):`,
+          apiResponse.status
+        );
+        return null;
+      }
+
+      const data = apiResponse.data;
+
+      return {
+        aqi: data.aqi,
+        dominentpol: data.dominentpol,
+        iaqi: data.iaqi,
+        time: data.time ? { s: data.time.s, tz: data.time.tz } : undefined,
+      };
+    } catch (error: unknown) {
+      const isAbort = error instanceof Error && error.name === "AbortError";
+      const isLast = attempt === AQI_MAX_RETRIES;
+
+      if (isLast) {
+        if (isAbort) {
+          console.error(
+            `AQI API timeout for (${lat}, ${lon}) after ${AQI_MAX_RETRIES + 1} attempts`
+          );
+        } else {
+          console.error(
+            `Failed to fetch AQI for (${lat}, ${lon}) after ${AQI_MAX_RETRIES + 1} attempts:`,
+            error
+          );
+        }
+      }
+
+      if (!isLast) {
+        // Brief delay before retry (500ms, 1000ms)
+        await new Promise((resolve) =>
+          setTimeout(resolve, 500 * (attempt + 1))
+        );
+      }
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    const data = apiResponse.data;
-
-    // Extract and return the AQI data
-    const aqiData: AQIData = {
-      aqi: data.aqi,
-      dominentpol: data.dominentpol,
-      iaqi: data.iaqi,
-      time: data.time
-        ? {
-            s: data.time.s,
-            tz: data.time.tz,
-          }
-        : undefined,
-    };
-
-    return aqiData;
-  } catch (error: unknown) {
-    if (error instanceof Error && error.name === "AbortError") {
-      console.error(`AQI API timeout for (${lat}, ${lon})`);
-    } else {
-      console.error(`Failed to fetch AQI for (${lat}, ${lon}):`, error);
-    }
-    return null;
-  } finally {
-    clearTimeout(timeoutId);
   }
+
+  return null;
 }
 
 /**

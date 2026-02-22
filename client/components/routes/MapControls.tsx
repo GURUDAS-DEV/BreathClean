@@ -12,7 +12,7 @@ export default function MapControls({
   onLocate?: () => void;
 }) {
   return (
-    <div className="absolute right-4 bottom-52 z-40 flex flex-col gap-2 lg:right-96 lg:bottom-10">
+    <div className="absolute right-3 bottom-74 z-40 flex flex-col gap-2 lg:right-[352px] lg:bottom-8">
       <button
         onClick={onZoomIn}
         aria-label="Zoom in"

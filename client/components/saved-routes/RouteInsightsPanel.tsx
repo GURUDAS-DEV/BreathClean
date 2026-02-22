@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 import {
   Clock,
   Navigation,
@@ -23,14 +21,14 @@ interface RouteInsightsPanelProps {
   onSubRouteSelect?: (index: number) => void;
 }
 
-function getAqiBadge(score: number | null | undefined) {
+function getHealthBadge(score: number | null | undefined) {
   if (score == null)
     return { label: "N/A", color: "bg-slate-100 text-slate-600" };
-  if (score <= 50)
+  if (score >= 75)
     return { label: "Good", color: "bg-emerald-100 text-emerald-700" };
-  if (score <= 100)
+  if (score >= 50)
     return { label: "Fair", color: "bg-yellow-100 text-yellow-700" };
-  if (score <= 150)
+  if (score >= 25)
     return { label: "Poor", color: "bg-orange-100 text-orange-700" };
   return { label: "Unhealthy", color: "bg-red-100 text-red-700" };
 }
@@ -53,15 +51,28 @@ export default function RouteInsightsPanel({
   onSubRouteSelect,
 }: RouteInsightsPanelProps) {
   const subRoute = route.routes[subRouteIndex];
-  const aqi = getAqiBadge(subRoute.lastComputedScore);
+  const healthBadge = getHealthBadge(subRoute.lastComputedScore);
 
-  // Find the cleanest route
+  const gmapsTravelMode =
+    subRoute.travelMode === "cycling"
+      ? "bicycling"
+      : (subRoute.travelMode ?? "driving");
+
+  const [fromLng, fromLat] = route.from.location.coordinates;
+  const [toLng, toLat] = route.to.location.coordinates;
+
+  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${fromLat},${fromLng}&destination=${toLat},${toLng}&travelmode=${gmapsTravelMode}`;
+
+  // Find the cleanest route: highest health score wins; tie → faster route
   const bestIdx = route.routes.reduce(
     (best, r, i) => {
-      const score = r.lastComputedScore ?? Infinity;
-      return score < best.score ? { score, idx: i } : best;
+      const score = r.lastComputedScore ?? -Infinity;
+      if (score > best.score) return { score, idx: i };
+      if (score === best.score && r.duration < route.routes[best.idx].duration)
+        return { score, idx: i };
+      return best;
     },
-    { score: Infinity, idx: 0 }
+    { score: -Infinity, idx: 0 }
   ).idx;
 
   const bestRoute = route.routes[bestIdx];
@@ -79,12 +90,12 @@ export default function RouteInsightsPanel({
       </div>
 
       <div className="flex-1 space-y-5 overflow-y-auto p-5">
-        {/* AQI Score */}
+        {/* Health Score */}
         <div className="rounded-xl border border-slate-100 p-4 dark:border-slate-800">
           <div className="mb-3 flex items-center gap-2">
             <Wind className="h-4 w-4 text-[#2bee6c]" />
             <span className="text-xs font-semibold text-slate-500 uppercase">
-              Air Quality
+              Health Score
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -94,10 +105,10 @@ export default function RouteInsightsPanel({
             <span
               className={cn(
                 "rounded-full px-2.5 py-1 text-xs font-semibold",
-                aqi.color
+                healthBadge.color
               )}
             >
-              {aqi.label}
+              {healthBadge.label}
             </span>
           </div>
         </div>
@@ -157,7 +168,7 @@ export default function RouteInsightsPanel({
               <p className="text-sm text-slate-600 dark:text-slate-400">
                 Route {bestIdx + 1} is cleaner
                 {bestRoute.lastComputedScore != null &&
-                  ` (AQI: ${bestRoute.lastComputedScore})`}
+                  ` (Score: ${bestRoute.lastComputedScore})`}
                 . Consider switching for better air quality.
               </p>
             )}
@@ -175,7 +186,7 @@ export default function RouteInsightsPanel({
             </div>
             <div className="space-y-2">
               {route.routes.map((r, i) => {
-                const badge = getAqiBadge(r.lastComputedScore);
+                const badge = getHealthBadge(r.lastComputedScore);
                 return (
                   <div
                     key={i}
@@ -241,13 +252,15 @@ export default function RouteInsightsPanel({
 
       {/* CTA */}
       <div className="border-t border-slate-100 p-4 dark:border-slate-800">
-        <Link
-          href="/home"
+        <a
+          href={googleMapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#2bee6c] px-5 py-3 text-sm font-bold text-[#102216] shadow-lg shadow-[#2bee6c]/20 transition-all hover:bg-[#2bee6c]/90 active:scale-95"
         >
           <Navigation className="h-4 w-4" />
-          Start Route
-        </Link>
+          Start in Google Maps
+        </a>
         <button
           onClick={() => onDelete(route._id)}
           className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-bold text-red-500 transition-all hover:bg-red-50 hover:text-red-600 active:scale-95 dark:text-red-400 dark:hover:bg-red-900/20 dark:hover:text-red-300"

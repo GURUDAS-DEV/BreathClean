@@ -15,19 +15,19 @@ interface SavedRouteCardProps {
   onDelete: (routeId: string) => void;
 }
 
-function getAqiColor(score: number | null | undefined) {
+function getHealthColor(score: number | null | undefined) {
   if (score == null) return "bg-slate-200 text-slate-600";
-  if (score <= 50) return "bg-emerald-100 text-emerald-700";
-  if (score <= 100) return "bg-yellow-100 text-yellow-700";
-  if (score <= 150) return "bg-orange-100 text-orange-700";
+  if (score >= 75) return "bg-emerald-100 text-emerald-700";
+  if (score >= 50) return "bg-yellow-100 text-yellow-700";
+  if (score >= 25) return "bg-orange-100 text-orange-700";
   return "bg-red-100 text-red-700";
 }
 
-function getAqiLabel(score: number | null | undefined) {
+function getHealthLabel(score: number | null | undefined) {
   if (score == null) return "N/A";
-  if (score <= 50) return "Good";
-  if (score <= 100) return "Fair";
-  if (score <= 150) return "Poor";
+  if (score >= 75) return "Good";
+  if (score >= 50) return "Fair";
+  if (score >= 25) return "Poor";
   return "Bad";
 }
 
@@ -52,10 +52,13 @@ export default function SavedRouteCard({
 }: SavedRouteCardProps) {
   const bestIdx = route.routes.reduce(
     (best, r, i) => {
-      const score = r.lastComputedScore ?? Infinity;
-      return score < best.score ? { score, idx: i } : best;
+      const score = r.lastComputedScore ?? -Infinity;
+      if (score > best.score) return { score, idx: i };
+      if (score === best.score && r.duration < route.routes[best.idx].duration)
+        return { score, idx: i };
+      return best;
     },
-    { score: Infinity, idx: 0 }
+    { score: -Infinity, idx: 0 }
   ).idx;
 
   return (
@@ -147,12 +150,16 @@ export default function SavedRouteCard({
           <div
             className={cn(
               "ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold",
-              getAqiColor(route.routes[selectedSubRouteIndex].lastComputedScore)
+              getHealthColor(
+                route.routes[selectedSubRouteIndex].lastComputedScore
+              )
             )}
           >
-            AQI:{" "}
+            Health:{" "}
             {route.routes[selectedSubRouteIndex].lastComputedScore ?? "N/A"} (
-            {getAqiLabel(route.routes[selectedSubRouteIndex].lastComputedScore)}
+            {getHealthLabel(
+              route.routes[selectedSubRouteIndex].lastComputedScore
+            )}
             )
           </div>
         </div>

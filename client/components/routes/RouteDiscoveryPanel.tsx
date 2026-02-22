@@ -8,6 +8,7 @@ import {
   Car,
   ChevronLeft,
   CircleDot,
+  Map,
   MapPin,
   User,
 } from "lucide-react";
@@ -21,6 +22,7 @@ type RouteDiscoveryPanelProps = {
   onModeChange: (mode: TravelMode) => void;
   onSaveRoute: () => void;
   canSave: boolean;
+  googleMapsUrl: string | null;
 };
 
 export default function RouteDiscoveryPanel({
@@ -30,6 +32,7 @@ export default function RouteDiscoveryPanel({
   onModeChange,
   onSaveRoute,
   canSave,
+  googleMapsUrl,
 }: RouteDiscoveryPanelProps) {
   const router = useRouter();
 
@@ -69,16 +72,29 @@ export default function RouteDiscoveryPanel({
               </div>
             </div>
 
+            <a
+              href={googleMapsUrl ?? "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-disabled={!googleMapsUrl}
+              className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg transition-all ${
+                googleMapsUrl
+                  ? "bg-[#2bee6c] text-slate-900 shadow-md"
+                  : "pointer-events-none bg-slate-100 text-slate-400 dark:bg-slate-800"
+              }`}
+            >
+              <Map size={16} />
+            </a>
             <button
               onClick={onSaveRoute}
               disabled={!canSave}
               className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg transition-all ${
                 canSave
-                  ? "bg-[#2bee6c] text-slate-900 shadow-md"
-                  : "bg-slate-100 text-slate-400 dark:bg-slate-800"
+                  ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                  : "bg-slate-100 text-slate-300 dark:bg-slate-800 dark:text-slate-600"
               }`}
             >
-              <Bookmark size={16} />
+              <Bookmark size={15} />
             </button>
           </div>
 
@@ -212,17 +228,31 @@ export default function RouteDiscoveryPanel({
             </div>
           </div>
 
-          <div className="border-t border-slate-100 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-800/50">
+          <div className="space-y-2 border-t border-slate-100 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-800/50">
+            <a
+              href={googleMapsUrl ?? "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-disabled={!googleMapsUrl}
+              className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-bold shadow-lg transition-all ${
+                googleMapsUrl
+                  ? "bg-[#2bee6c] text-slate-900 shadow-[#2bee6c]/20 hover:bg-[#2bee6c]/90"
+                  : "pointer-events-none cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500"
+              }`}
+            >
+              <Map className="h-5 w-5" />
+              Open in Google Maps
+            </a>
             <button
               onClick={onSaveRoute}
               disabled={!canSave}
-              className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-bold shadow-lg transition-all ${
+              className={`flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${
                 canSave
-                  ? "bg-[#2bee6c] text-slate-900 shadow-[#2bee6c]/20 hover:bg-[#2bee6c]/90"
-                  : "cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500"
+                  ? "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+                  : "cursor-not-allowed text-slate-300 dark:text-slate-600"
               }`}
             >
-              <Bookmark className="h-5 w-5" />
+              <Bookmark className="h-4 w-4" />
               Save Route
             </button>
           </div>
