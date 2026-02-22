@@ -62,13 +62,13 @@ connectDB()
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
 
-      // Initialize the cron scheduler only when explicitly opted in
-      if (process.env.ENABLE_SCHEDULER === "true") {
-        initScheduler();
-        console.log("Batch scoring scheduler initialized");
-      } else {
-        console.log("Scheduler disabled (set ENABLE_SCHEDULER=true to enable)");
-      }
+      // Start the periodic batch scoring scheduler
+      initScheduler();
+
+      // Also fire once immediately on startup (no wait for first cron tick)
+      runManualBatchScoring().catch((err) =>
+        console.error("[Scheduler] Startup run failed:", err)
+      );
     });
   })
   .catch((error) => {

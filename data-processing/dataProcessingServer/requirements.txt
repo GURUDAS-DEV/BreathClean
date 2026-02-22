@@ -3,6 +3,9 @@
 # Django (must match version referenced in settings.py — Django 6.0.2)
 Django==5.2.11
 
+# CORS headers — allows Node server (port 8000) and Next.js (port 3000) to call this API
+django-cors-headers>=4.3.0
+
 # Pathway - Real-time data processing framework
 # NOTE: Pathway is licensed under BSL 1.1 with service-use restrictions. 
 # Legal review required: Ensure use case doesn't violate Additional Use Grant.

@@ -19,19 +19,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # ---------------------------------------------------------------------------
-# Security settings — driven by environment variables.
+# Security — driven by environment variables.
 #
 # Required in production:
-#   DJANGO_SECRET_KEY  — a long, random secret key
+#   DJANGO_SECRET_KEY      — a long, random secret key
 #
-# Optional (have sensible dev defaults):
+# Optional (sensible dev defaults apply if not set):
 #   DJANGO_DEBUG           — set to "False" / "0" to disable debug mode
 #   DJANGO_ALLOWED_HOSTS   — comma-separated list of allowed hostnames
 # ---------------------------------------------------------------------------
 
-# Detect whether we are running in development mode: if no explicit secret
-# key is provided via the environment, we fall back to an insecure default
-# and treat the environment as development.
 _SECRET_KEY_ENV = os.getenv('DJANGO_SECRET_KEY')
 _IS_DEV = _SECRET_KEY_ENV is None
 
@@ -46,8 +43,9 @@ _debug_env = os.getenv('DJANGO_DEBUG')
 if _debug_env is not None:
     DEBUG = _debug_env.lower() in ('true', '1', 'yes')
 else:
-    # Default to True only in development.
+    # Default to True in development (when no SECRET_KEY is set).
     DEBUG = _IS_DEV
+
 
 def _normalize_host(value: str) -> str:
     host = (value or '').strip()
@@ -60,8 +58,7 @@ def _normalize_host(value: str) -> str:
     return host.lower()
 
 
-# ALLOWED_HOSTS — accepts comma-separated values (hosts or URLs).
-# Render fallback accepts onrender hostnames when no explicit env is provided.
+# ALLOWED_HOSTS
 _allowed_hosts_env = os.getenv('DJANGO_ALLOWED_HOSTS', '')
 _allowed_hosts_from_env = [
     _normalize_host(item) for item in _allowed_hosts_env.split(',') if item.strip()
@@ -72,15 +69,25 @@ _render_host_candidates = [
     os.getenv('RENDER_EXTERNAL_URL', ''),
     os.getenv('RENDER_SERVICE_NAME', ''),
 ]
-_render_hosts = [h for h in (_normalize_host(candidate) for candidate in _render_host_candidates) if h]
+_render_hosts = [
+    h for h in (_normalize_host(c) for c in _render_host_candidates) if h
+]
 
 if _allowed_hosts_from_env:
     ALLOWED_HOSTS = _allowed_hosts_from_env
 else:
-    ALLOWED_HOSTS = _render_hosts + ['.onrender.com', 'localhost', '127.0.0.1']
+    # Local dev: allow all localhost variants + Render hosts for production
+    ALLOWED_HOSTS = _render_hosts + [
+        'localhost',
+        '127.0.0.1',
+        '[::1]',           # IPv6 localhost
+        '.onrender.com',   # Render.com deployments
+    ]
 
 
+# ---------------------------------------------------------------------------
 # Application definition
+# ---------------------------------------------------------------------------
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -89,10 +96,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Third-party
+    'corsheaders',  # pip install django-cors-headers
+    # Local apps
     'api',
 ]
 
 MIDDLEWARE = [
+    # CorsMiddleware MUST come before CommonMiddleware to handle preflight OPTIONS requests
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -122,8 +134,59 @@ TEMPLATES = [
 WSGI_APPLICATION = 'dataProcessingServer.wsgi.application'
 
 
+# ---------------------------------------------------------------------------
+# CORS — Cross-Origin Resource Sharing
+#
+# In production set this env var to your actual domains:
+#   CORS_ALLOWED_ORIGINS=https://yourfrontend.com,https://yourapi.com
+# ---------------------------------------------------------------------------
+
+_cors_env = os.getenv('CORS_ALLOWED_ORIGINS', '')
+_cors_from_env = [o.strip() for o in _cors_env.split(',') if o.strip()]
+
+if _cors_from_env:
+    CORS_ALLOWED_ORIGINS = _cors_from_env
+else:
+    # Local dev fallback — never reaches production if env var is set
+    CORS_ALLOWED_ORIGINS = [
+        'http://localhost:8000',
+        'http://127.0.0.1:8000',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'http://localhost:8001',
+        'http://127.0.0.1:8001',
+    ]
+
+# Allow credentials (cookies, Authorization headers) in cross-origin requests
+CORS_ALLOW_CREDENTIALS = True
+
+# Allow all standard + custom headers needed for JSON API calls
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
+
+# Allow POST (and other non-simple methods) cross-origin
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+
+
+# ---------------------------------------------------------------------------
 # Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+# ---------------------------------------------------------------------------
 
 DATABASES = {
     'default': {
@@ -133,39 +196,56 @@ DATABASES = {
 }
 
 
+# ---------------------------------------------------------------------------
 # Password validation
-# https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
+# ---------------------------------------------------------------------------
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
 
+# ---------------------------------------------------------------------------
 # Internationalization
-# https://docs.djangoproject.com/en/6.0/topics/i18n/
+# ---------------------------------------------------------------------------
 
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.0/howto/static-files/
+# ---------------------------------------------------------------------------
+# Static files
+# ---------------------------------------------------------------------------
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+
+# ---------------------------------------------------------------------------
+# Production security — auto-enabled when DEBUG=False
+# (no env vars needed; these activate automatically in production)
+# ---------------------------------------------------------------------------
+
+if not DEBUG:
+    # Force all traffic over HTTPS
+    SECURE_SSL_REDIRECT = True
+
+    # Prevent cookies being sent over HTTP
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    # Tell browsers to only use HTTPS for 1 year
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+    # Prevent browsers from sniffing content type
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+
+    # Clickjacking protection
+    X_FRAME_OPTIONS = 'DENY'
