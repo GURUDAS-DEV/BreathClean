@@ -1,11 +1,3 @@
-/**
- * Pathway Client
- *
- * Communicates with the Django/Pathway data processing server
- * to compute route health scores.
- */
-
-// Input format expected by Pathway endpoint
 export interface PathwayRouteInput {
   routeId?: string;
   routeIndex: number;
@@ -44,7 +36,6 @@ export interface PathwayRouteInput {
   lastComputedScore?: number;
 }
 
-// Output format from Pathway endpoint
 export interface PathwayRouteOutput {
   routeIndex: number;
   routeId?: string;
@@ -107,24 +98,15 @@ export interface PathwayResponse {
   engine?: string;
 }
 
-/**
- * Send routes to Pathway for score computation
- *
- * @param baseUrl - Base URL of the Pathway server (e.g., "http://localhost:8001")
- * @param routes - Array of route data with pre-fetched weather/AQI
- * @returns Pathway response with computed scores
- */
 export async function sendToPathway(
   baseUrl: string,
   routes: PathwayRouteInput[]
 ): Promise<PathwayResponse> {
   const url = `${baseUrl}/api/compute-scores/`;
-  const timeout = 30000; // 30 second timeout
+  const timeout = 30000;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-  console.log(`[PathwayClient] POST ${url} (timeout: ${timeout}ms)`);
 
   try {
     const response = await fetch(url, {
@@ -148,7 +130,6 @@ export async function sendToPathway(
     }
 
     const data = (await response.json()) as PathwayResponse;
-    console.log(`[PathwayClient] Success from ${url}`);
     return data;
   } catch (error) {
     if (error instanceof Error) {
@@ -177,9 +158,6 @@ export async function sendToPathway(
   }
 }
 
-/**
- * Health check for Pathway server
- */
 export async function checkPathwayHealth(baseUrl: string): Promise<boolean> {
   const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
   const url = `${normalizedBaseUrl}/api/health/`;
@@ -196,10 +174,6 @@ export async function checkPathwayHealth(baseUrl: string): Promise<boolean> {
       signal: controller.signal,
     });
     if (response.ok) {
-      const data = await response.json();
-      console.log(
-        `[PathwayClient] Health check passed: ${JSON.stringify(data)}`
-      );
       return true;
     }
     console.error(
