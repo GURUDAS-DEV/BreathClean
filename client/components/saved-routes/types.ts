@@ -11,6 +11,7 @@ export interface ILineString {
 export interface IRouteOption {
   distance: number; // in km
   duration: number; // in minutes
+  travelMode?: "walking" | "cycling" | "driving";
   routeGeometry: ILineString;
   lastComputedScore?: number | null;
   lastComputedAt?: string | null;
