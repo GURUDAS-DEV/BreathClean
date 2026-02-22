@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import type { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 
@@ -270,6 +271,24 @@ function calculateTrafficScore(trafficValue: number): number {
   return score;
 }
 
+const SCORE_CACHE_TTL = 1800; // 30 minutes
+
+/**
+ * Generate a deterministic cache key from route inputs
+ */
+function generateScoreCacheKey(routes: RouteData[], traffic: number[]): string {
+  const keyData = routes.map((r, i) => ({
+    coords: r.routeGeometry.coordinates,
+    mode: r.travelMode,
+    traffic: traffic[i] || 0,
+  }));
+  const hash = crypto
+    .createHash("sha256")
+    .update(JSON.stringify(keyData))
+    .digest("hex");
+  return `score_cache:${hash}`;
+}
+
 /**
  * Main controller for computing route scores
  * Pipeline: Route Data → Breakpoints → Weather → AQI → Score
@@ -311,6 +330,39 @@ export const getScoreController = async (req: Request, res: Response) => {
         });
         return;
       }
+    }
+
+    // Check cache for previously computed scores
+    const cacheKey = generateScoreCacheKey(routes, traffic);
+    try {
+      const cached = await redis.get<Record<string, unknown>>(cacheKey);
+      if (cached) {
+        // Generate fresh searchId so breakpoints are available for saving
+        const searchId = uuidv4();
+        const breakpoints = computeBreakpoints(routes);
+        try {
+          await redis.set(
+            `route_search:${searchId}`,
+            JSON.stringify({
+              breakpoints,
+              timestamp: new Date().toISOString(),
+            }),
+            { ex: 3600 }
+          );
+        } catch (e) {
+          console.error("Redis breakpoint cache failed:", e);
+        }
+
+        res.json({
+          ...cached,
+          searchId,
+          cached: true,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+    } catch (cacheError) {
+      console.error("Redis score cache read failed:", cacheError);
     }
 
     // Step 1: Extract breakpoints from route geometry
@@ -485,28 +537,10 @@ export const getScoreController = async (req: Request, res: Response) => {
       current.overallScore > best.overallScore ? current : best
     );
 
-    // --- REDIS CACHING START ---
-    const searchId = uuidv4();
-    try {
-      // Store ONLY raw breakpoints (to save locations later)
-      // TTL: 3600 seconds (1 hour)
-      await redis.set(
-        `route_search:${searchId}`,
-        JSON.stringify({
-          breakpoints,
-          timestamp: new Date().toISOString(),
-        }),
-        { ex: 3600 }
-      );
-    } catch (redisError) {
-      console.error("Redis caching failed (continuing anyway):", redisError);
-    }
-    // --- REDIS CACHING END ---
-
-    res.json({
+    // Build response data (without searchId/timestamp, for caching)
+    const responseData = {
       success: true,
       message: "Route scores computed successfully",
-      searchId, // <--- Return this to client
       data: {
         routes: routeScores,
         bestRoute: {
@@ -527,6 +561,31 @@ export const getScoreController = async (req: Request, res: Response) => {
           },
         },
       },
+    };
+
+    // Cache the computed scores (30 min TTL)
+    const searchId = uuidv4();
+    try {
+      await Promise.all([
+        redis.set(cacheKey, JSON.stringify(responseData), {
+          ex: SCORE_CACHE_TTL,
+        }),
+        redis.set(
+          `route_search:${searchId}`,
+          JSON.stringify({
+            breakpoints,
+            timestamp: new Date().toISOString(),
+          }),
+          { ex: 3600 }
+        ),
+      ]);
+    } catch (redisError) {
+      console.error("Redis caching failed (continuing anyway):", redisError);
+    }
+
+    res.json({
+      ...responseData,
+      searchId,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
