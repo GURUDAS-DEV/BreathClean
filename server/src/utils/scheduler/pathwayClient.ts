@@ -124,6 +124,8 @@ export async function sendToPathway(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+  console.log(`[PathwayClient] POST ${url} (timeout: ${timeout}ms)`);
+
   try {
     const response = await fetch(url, {
       method: "POST",
@@ -137,7 +139,7 @@ export async function sendToPathway(
     if (!response.ok) {
       const errorText = await response.text();
       console.error(
-        `[PathwayClient] HTTP error ${response.status}: ${errorText}`
+        `[PathwayClient] HTTP ${response.status} from ${url}: ${errorText}`
       );
       return {
         success: false,
@@ -146,27 +148,30 @@ export async function sendToPathway(
     }
 
     const data = (await response.json()) as PathwayResponse;
-
+    console.log(`[PathwayClient] Success from ${url}`);
     return data;
   } catch (error) {
     if (error instanceof Error) {
       if (error.name === "AbortError") {
-        console.error("[PathwayClient] Request timed out");
-        return {
-          success: false,
-          message: "Request timed out",
-        };
+        console.error(
+          `[PathwayClient] Timed out after ${timeout}ms calling ${url}`
+        );
+        return { success: false, message: "Request timed out" };
       }
-      console.error(`[PathwayClient] Error: ${error.message}`);
-      return {
-        success: false,
-        message: error.message,
-      };
+      const cause = (error as NodeJS.ErrnoException).cause;
+      console.error(
+        `[PathwayClient] Fetch failed for ${url} — ${error.message}`,
+        cause instanceof Error
+          ? {
+              code: (cause as NodeJS.ErrnoException).code,
+              cause: cause.message,
+            }
+          : cause
+      );
+      return { success: false, message: error.message };
     }
-    return {
-      success: false,
-      message: "Unknown error",
-    };
+    console.error(`[PathwayClient] Unknown error calling ${url}:`, error);
+    return { success: false, message: "Unknown error" };
   } finally {
     clearTimeout(timeoutId);
   }
