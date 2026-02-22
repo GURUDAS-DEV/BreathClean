@@ -118,66 +118,99 @@ export async function sendToPathway(
   baseUrl: string,
   routes: PathwayRouteInput[]
 ): Promise<PathwayResponse> {
-  const url = `${baseUrl}/api/compute-scores/`;
-  const timeout = 30000; // 30 second timeout
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
+  const url = `${normalizedBaseUrl}/api/compute-scores/`;
+  const timeout = process.env.PATHWAY_TIMEOUT_MS
+    ? parseInt(process.env.PATHWAY_TIMEOUT_MS, 10)
+    : 90000;
+  const retryCount = process.env.PATHWAY_RETRY_COUNT
+    ? parseInt(process.env.PATHWAY_RETRY_COUNT, 10)
+    : 1;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  for (let attempt = 0; attempt <= retryCount; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ routes }),
-      signal: controller.signal,
-    });
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ routes, usePathway: false }),
+        signal: controller.signal,
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(
-        `[PathwayClient] HTTP error ${response.status}: ${errorText}`
-      );
-      return {
-        success: false,
-        message: `HTTP ${response.status}: ${errorText}`,
-      };
-    }
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          `[PathwayClient] HTTP error ${response.status} (attempt ${attempt + 1}/${retryCount + 1}): ${errorText}`
+        );
 
-    const data = (await response.json()) as PathwayResponse;
+        if (response.status >= 500 && attempt < retryCount) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          continue;
+        }
 
-    return data;
-  } catch (error) {
-    if (error instanceof Error) {
-      if (error.name === "AbortError") {
-        console.error("[PathwayClient] Request timed out");
         return {
           success: false,
-          message: "Request timed out",
+          message: `HTTP ${response.status}: ${errorText}`,
         };
       }
-      console.error(`[PathwayClient] Error: ${error.message}`);
+
+      const data = (await response.json()) as PathwayResponse;
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === "AbortError") {
+          console.error(
+            `[PathwayClient] Request timed out after ${timeout}ms (attempt ${attempt + 1}/${retryCount + 1})`
+          );
+          if (attempt < retryCount) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            continue;
+          }
+          return {
+            success: false,
+            message: "Request timed out",
+          };
+        }
+
+        console.error(`[PathwayClient] Error: ${error.message}`);
+        if (attempt < retryCount) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          continue;
+        }
+        return {
+          success: false,
+          message: error.message,
+        };
+      }
+
       return {
         success: false,
-        message: error.message,
+        message: "Unknown error",
       };
+    } finally {
+      clearTimeout(timeoutId);
     }
-    return {
-      success: false,
-      message: "Unknown error",
-    };
-  } finally {
-    clearTimeout(timeoutId);
   }
+
+  return {
+    success: false,
+    message: "Request failed after retries",
+  };
 }
 
 /**
  * Health check for Pathway server
  */
 export async function checkPathwayHealth(baseUrl: string): Promise<boolean> {
-  const url = `${baseUrl}/api/health/`;
-  const timeout = 30000;
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
+  const url = `${normalizedBaseUrl}/api/health/`;
+  const timeout = process.env.PATHWAY_TIMEOUT_MS
+    ? parseInt(process.env.PATHWAY_TIMEOUT_MS, 10)
+    : 30000;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
